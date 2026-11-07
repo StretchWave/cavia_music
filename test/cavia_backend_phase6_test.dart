@@ -109,8 +109,7 @@ void main() {
 
   setUp(() async {
     db = CaviaDatabase.forTesting(NativeDatabase.memory());
-    await InitialDataSeeder(db).seedIfNeeded();
-
+    // InitialDataSeeder removed from production — database starts empty.
     tempCacheDir = await Directory.systemTemp.createTemp('cavia_e2e_test_');
     cacheManager = LocalCacheManager(db: db, customDirectory: tempCacheDir);
     syncRepo = LocalSyncRepository(db: db, deviceId: 'device_alpha');

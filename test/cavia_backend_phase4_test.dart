@@ -326,7 +326,7 @@ void main() {
 
     setUp(() async {
       db = CaviaDatabase.forTesting(NativeDatabase.memory());
-      await InitialDataSeeder(db).seedIfNeeded();
+      // InitialDataSeeder removed from production — database starts empty.
       trackRepo = LocalTrackRepository(db);
       playlistRepo = LocalPlaylistRepository(db);
 

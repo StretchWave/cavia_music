@@ -64,8 +64,8 @@ class SpotifyOAuthService {
     String? redirectUri,
     FlutterSecureStorage? secureStorage,
     http.Client? httpClient,
-  })  : clientId = clientId ?? const String.fromEnvironment('SPOTIFY_CLIENT_ID', defaultValue: 'cavia_music_spotify_client'),
-        redirectUri = redirectUri ?? const String.fromEnvironment('SPOTIFY_REDIRECT_URI', defaultValue: 'caviamusic://spotify/callback'),
+  })  : clientId = clientId ?? const String.fromEnvironment('CAVIA_SPOTIFY_CLIENT_ID', defaultValue: 'cavia_music_spotify_client'),
+        redirectUri = redirectUri ?? const String.fromEnvironment('CAVIA_SPOTIFY_REDIRECT_URI', defaultValue: 'caviamusic://auth/spotify/callback'),
         secureStorage = secureStorage ?? const FlutterSecureStorage(),
         httpClient = httpClient ?? http.Client();
 
