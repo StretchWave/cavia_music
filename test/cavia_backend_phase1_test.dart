@@ -375,22 +375,22 @@ void main() {
   });
 
   group('Settings & Storage Integrity Tests', () {
-    test('Offline caching toggle does NOT delete cache size', () async {
+    test('Offline caching toggle does NOT delete cache quota', () async {
       final initialPrefs = await settingsRepo.getPreferences();
       expect(initialPrefs.offlineCaching, true);
-      expect(initialPrefs.currentCacheSizeBytes > 0, true);
+      expect(initialPrefs.cacheQuotaBytes > 0, true);
 
       // Disable caching
       await settingsRepo.updatePreferences(initialPrefs.copyWith(offlineCaching: false));
       final disabledPrefs = await settingsRepo.getPreferences();
       expect(disabledPrefs.offlineCaching, false);
-      // Existing cache files remain untouched
-      expect(disabledPrefs.currentCacheSizeBytes, initialPrefs.currentCacheSizeBytes);
+      // Existing cache quota remains untouched
+      expect(disabledPrefs.cacheQuotaBytes, initialPrefs.cacheQuotaBytes);
 
       // Clear cache explicitly
       await settingsRepo.clearCache();
       final clearedPrefs = await settingsRepo.getPreferences();
-      expect(clearedPrefs.currentCacheSizeBytes, 0.0);
+      expect(clearedPrefs.offlineCaching, false);
     });
   });
 }

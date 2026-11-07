@@ -14,6 +14,9 @@ import 'package:cavia_music/core/domain/result/app_error.dart';
 
 class _FakeTrackRepo implements TrackRepository {
   @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+
+  @override
   Future<Result<List<Track>, AppError>> getAllTracks({String? profileId}) async => const Result.success([]);
   @override
   Stream<List<Track>> watchTracks({String? profileId}) => const Stream.empty();
@@ -172,6 +175,131 @@ void main() {
       expect(result.isSuccess, true);
       expect(result.dataOrNull!.isStream, true);
       expect(result.dataOrNull!.uri.toString(), 'https://stream.googlevideo.com/playback_source');
+    });
+
+    test('InnerTubeClient searchSongs traverses multi-section itemSectionRenderers and parses overlay videoIds', () async {
+      // Construct a response mimicking real YouTube Music response structure:
+      // - 1 musicCardShelfRenderer (top result with 3 items)
+      // - 1 itemSectionRenderer (regular results with 5 items having overlay play button videoIds)
+      final mockResponse = {
+        'contents': {
+          'tabbedSearchResultsRenderer': {
+            'tabs': [
+              {
+                'tabRenderer': {
+                  'content': {
+                    'sectionListRenderer': {
+                      'contents': [
+                        {
+                          'musicCardShelfRenderer': {
+                            'contents': List.generate(3, (i) => {
+                              'musicResponsiveListItemRenderer': {
+                                'flexColumns': [
+                                  {
+                                    'musicResponsiveListItemFlexColumnRenderer': {
+                                      'text': {
+                                        'runs': [{'text': 'Card Track $i'}]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    'musicResponsiveListItemFlexColumnRenderer': {
+                                      'text': {
+                                        'runs': [
+                                          {'text': 'Card Artist $i'},
+                                          {'text': ' • '},
+                                          {'text': 'Card Album $i'},
+                                          {'text': ' • '},
+                                          {'text': '3:45'},
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ],
+                                'navigationEndpoint': {
+                                  'watchEndpoint': {'videoId': 'card_id_$i'}
+                                }
+                              }
+                            })
+                          }
+                        },
+                        {
+                          'itemSectionRenderer': {
+                            'contents': List.generate(5, (i) => {
+                              'musicResponsiveListItemRenderer': {
+                                'flexColumns': [
+                                  {
+                                    'musicResponsiveListItemFlexColumnRenderer': {
+                                      'text': {
+                                        'runs': [{'text': 'Section Track $i'}]
+                                      }
+                                    }
+                                  },
+                                  {
+                                    'musicResponsiveListItemFlexColumnRenderer': {
+                                      'text': {
+                                        'runs': [
+                                          {'text': 'Section Artist $i'},
+                                          {'text': ' • '},
+                                          {'text': 'Section Album $i'},
+                                          {'text': ' • '},
+                                          {'text': '1.2M views'},
+                                          {'text': ' • '},
+                                          {'text': '4:15'},
+                                        ]
+                                      }
+                                    }
+                                  }
+                                ],
+                                'overlay': {
+                                  'musicItemThumbnailOverlayRenderer': {
+                                    'content': {
+                                      'musicPlayButtonRenderer': {
+                                        'playNavigationEndpoint': {
+                                          'watchEndpoint': {'videoId': 'section_id_$i'}
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            })
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      };
+
+      final mockClient = http_testing.MockClient((req) async {
+        return http.Response(
+          jsonEncode(mockResponse),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+
+      final client = InnerTubeClient(httpClient: mockClient);
+      final searchResult = await client.searchSongs('test query');
+
+      expect(searchResult.isSuccess, true);
+      final songs = searchResult.dataOrNull!;
+
+      // Old code only parsed the top card shelf and stopped at 3.
+      // New recursive multi-section extraction yields all 8 songs across shelves!
+      expect(songs.length, 8);
+      expect(songs[0].videoId, 'card_id_0');
+      expect(songs[0].title, 'Card Track 0');
+      expect(songs[3].videoId, 'section_id_0');
+      expect(songs[3].title, 'Section Track 0');
+      expect(songs[3].artist, 'Section Artist 0');
+      expect(songs[3].album, 'Section Album 0');
+      expect(songs[3].duration, const Duration(minutes: 4, seconds: 15));
     });
   });
 }

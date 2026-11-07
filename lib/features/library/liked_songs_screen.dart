@@ -62,7 +62,52 @@ class LikedSongsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                if (library.likedSongs.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                playback.playQueue(library.likedSongs, initialIndex: 0);
+                              },
+                              icon: const Icon(Icons.play_arrow_rounded),
+                              label: const Text('Play All'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: CaviaColors.vermilion,
+                                foregroundColor: CaviaColors.textIvory,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                playback.playQueue(library.likedSongs, shuffle: true);
+                              },
+                              icon: const Icon(Icons.shuffle_rounded),
+                              label: const Text('Shuffle'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: CaviaColors.textIvory,
+                                side: const BorderSide(color: CaviaColors.glassBorder),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                 SliverPadding(
                   padding: const EdgeInsets.only(left: 16, right: 16, bottom: 120),
@@ -128,7 +173,7 @@ class LikedSongsScreen extends StatelessWidget {
                                   color: CaviaColors.textDim,
                                 ),
                               ),
-                              onTap: () => playback.playNow(song),
+                              onTap: () => playback.playQueue(songs, initialIndex: index),
                               onLongPress: () =>
                                   TrackContextMenu.show(context, song),
                             );

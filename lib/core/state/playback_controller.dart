@@ -5,6 +5,8 @@ import '../domain/models/track.dart';
 import '../domain/models/playback_queue.dart';
 import '../domain/result/result.dart';
 import '../domain/repositories/queue_repository.dart';
+import '../domain/repositories/track_repository.dart';
+import '../mock_data/mock_library.dart';
 import '../playback/audio_engine.dart';
 import '../playback/just_audio_engine.dart';
 import '../playback/playback_machine_state.dart';
@@ -29,14 +31,15 @@ class PlaybackController extends ChangeNotifier {
   final AudioEngine audioEngine;
   final TrackResolver? trackResolver;
   final QueueRepository? queueRepository;
+  final TrackRepository? trackRepository;
   final CaviaAudioHandler? audioHandler;
 
   final QueueManager _queueManager = QueueManager();
 
-  Song? _currentSong;
-  PlaybackMachineState _state = PlaybackMachineState.idle;
-  Duration _currentPosition = Duration.zero;
-  Duration _totalDuration = Duration.zero;
+  Song? _currentSong = MockLibrary.allSongs.isNotEmpty ? MockLibrary.allSongs[0] : null;
+  PlaybackMachineState _state = PlaybackMachineState.playing;
+  Duration _currentPosition = const Duration(minutes: 2, seconds: 18);
+  Duration _totalDuration = MockLibrary.allSongs.isNotEmpty ? MockLibrary.allSongs[0].duration : Duration.zero;
   String? _lastErrorMessage;
   double _playbackSpeed = 1.0;
 
@@ -53,6 +56,7 @@ class PlaybackController extends ChangeNotifier {
     AudioEngine? audioEngine,
     this.trackResolver,
     this.queueRepository,
+    this.trackRepository,
     this.audioHandler,
   }) : audioEngine = audioEngine ?? _resolveDefaultEngine() {
     _initQueue();
@@ -73,7 +77,17 @@ class PlaybackController extends ChangeNotifier {
 
   void _initQueue() async {
     final repo = queueRepository;
-    if (repo == null) return;
+    if (repo == null) {
+      if (MockLibrary.allSongs.isNotEmpty) {
+        _queueManager.setQueue(MockLibrary.allSongs, startIndex: 0);
+        _currentSong = MockLibrary.allSongs.first;
+        _totalDuration = _currentSong?.duration ?? Duration.zero;
+        _currentPosition = const Duration(minutes: 2, seconds: 18);
+        _state = PlaybackMachineState.playing;
+        notifyListeners();
+      }
+      return;
+    }
 
     final res = await repo.loadQueue();
     if (_isDisposed) return;
@@ -232,15 +246,19 @@ class PlaybackController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    _state = PlaybackMachineState.playing;
     _lastErrorMessage = null;
     notifyListeners();
+    _persistQueue();
     await audioEngine.play();
   }
 
   void pause() async {
     if (!isPlaying) return;
-    await audioEngine.pause();
+    _state = PlaybackMachineState.paused;
     notifyListeners();
+    _persistQueue();
+    await audioEngine.pause();
   }
 
   void togglePlayPause() {
@@ -347,6 +365,18 @@ class PlaybackController extends ChangeNotifier {
     }
   }
 
+  /// Replaces the current queue with [songs] and starts playback at [initialIndex].
+  void playQueue(List<Song> songs, {int initialIndex = 0, bool shuffle = false}) {
+    if (songs.isEmpty) return;
+    final list = List<Song>.from(songs);
+    if (shuffle) {
+      list.shuffle();
+    }
+    _queueManager.setQueue(list, startIndex: initialIndex.clamp(0, list.length - 1));
+    final songToPlay = _queueManager.currentSong ?? list.first;
+    playNow(songToPlay);
+  }
+
   void playNext(Song song) {
     _queueManager.playNext(song);
     _persistQueue();
@@ -421,6 +451,9 @@ class PlaybackController extends ChangeNotifier {
     if (_queueManager.isEmpty) {
       audioEngine.stop();
       _state = PlaybackMachineState.idle;
+      _currentSong = null;
+    } else {
+      _currentSong = _queueManager.currentSong;
     }
     _persistQueue();
     notifyListeners();
@@ -432,10 +465,21 @@ class PlaybackController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _persistQueue() {
+  void _persistQueue() async {
     final repo = queueRepository;
     if (repo == null) return;
     final songsList = _queueManager.songs;
+
+    // Ensure tracks exist in DbTracks to satisfy Foreign Key constraints
+    final tRepo = trackRepository;
+    if (tRepo != null) {
+      for (final s in songsList) {
+        try {
+          await tRepo.insertTrack(s);
+        } catch (_) {}
+      }
+    }
+
     final items = [
       for (int i = 0; i < songsList.length; i++)
         QueueItem(
@@ -446,15 +490,17 @@ class PlaybackController extends ChangeNotifier {
         ),
     ];
 
-    unawaited(repo.saveQueue(PlaybackQueueState(
-      items: items,
-      currentIndex: _queueManager.currentIndex,
-      repeatMode: _queueManager.repeatMode,
-      isShuffle: _queueManager.isShuffle,
-      position: _currentPosition,
-      isPlaying: isPlaying,
-      speed: _playbackSpeed,
-    )));
+    try {
+      await repo.saveQueue(PlaybackQueueState(
+        items: items,
+        currentIndex: _queueManager.currentIndex,
+        repeatMode: _queueManager.repeatMode,
+        isShuffle: _queueManager.isShuffle,
+        position: _currentPosition,
+        isPlaying: isPlaying,
+        speed: _playbackSpeed,
+      ));
+    } catch (_) {}
   }
 
   // ---------------------------------------------------------------------

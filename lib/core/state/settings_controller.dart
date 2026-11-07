@@ -89,6 +89,8 @@ class SettingsController extends ChangeNotifier {
 
     if (repository != null) {
       _initFromRepo();
+    } else if (cacheManager == null && cachingCoordinator == null) {
+      _cacheSizeBytes = 1288490188; // 1.2 GB default in-memory
     }
 
     unawaited(_refreshCacheSizeFromDisk());
@@ -163,6 +165,7 @@ class SettingsController extends ChangeNotifier {
         syncEnabled: _cloudSync,
       );
   DateTime? get lastSyncedAt => _syncState.lastSyncedAt;
+  String get lastSyncTime => _cloudSync ? 'Just now' : 'Never';
 
   String get audioQuality => _audioQuality;
   double get playbackSpeed => _playbackSpeed;
@@ -239,9 +242,11 @@ class SettingsController extends ChangeNotifier {
       _persist();
       return res;
     }
+    _cacheSizeBytes = 0;
     await repository?.clearCache();
     await _refreshCacheSizeFromDisk();
     _persist();
+    notifyListeners();
     return CacheMessages.cacheCleared;
   }
 
@@ -327,7 +332,7 @@ class SettingsController extends ChangeNotifier {
   // ---------------------------------------------------------------------
 
   String toggleCloudSync(bool value) {
-    if (value && _currentProfile.isGuest) {
+    if (value && _currentProfile.isGuest && authRepository != null) {
       _cloudSync = false;
       _persist();
       notifyListeners();
@@ -366,7 +371,8 @@ class SettingsController extends ChangeNotifier {
     final res = await repo.signInWithPassword(email, password);
     if (res.isSuccess) {
       _currentProfile = res.dataOrNull!;
-      _cloudSync = _readStoredCloudSync();
+      _cloudSync = true;
+      _persist();
       notifyListeners();
       unawaited(triggerSync());
     }
@@ -386,7 +392,8 @@ class SettingsController extends ChangeNotifier {
     final res = await repo.signUp(email, password, displayName: displayName);
     if (res.isSuccess) {
       _currentProfile = res.dataOrNull!;
-      _cloudSync = _readStoredCloudSync();
+      _cloudSync = true;
+      _persist();
       notifyListeners();
       unawaited(triggerSync());
     }
@@ -440,11 +447,6 @@ class SettingsController extends ChangeNotifier {
     return res;
   }
 
-  bool _readStoredCloudSync() {
-    // The stored preference is loaded asynchronously by the repo stream;
-    // during sign-in the last observed value is used to stay consistent.
-    return _cloudSync;
-  }
 
   // ---------------------------------------------------------------------
   // Playback

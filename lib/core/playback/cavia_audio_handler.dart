@@ -44,9 +44,14 @@ class CaviaAudioHandler extends BaseAudioHandler with SeekHandler {
       artist: artist,
       duration: duration,
       artUri: artworkAssetOrUrl != null
-          ? (artworkAssetOrUrl.startsWith('http')
+          ? (artworkAssetOrUrl.startsWith('http://') ||
+                  artworkAssetOrUrl.startsWith('https://')
               ? Uri.parse(artworkAssetOrUrl)
-              : Uri.file(artworkAssetOrUrl))
+              : artworkAssetOrUrl.startsWith('asset://')
+                  ? Uri.parse(artworkAssetOrUrl)
+                  : artworkAssetOrUrl.startsWith('assets/')
+                      ? Uri.parse('asset:///$artworkAssetOrUrl')
+                      : Uri.file(artworkAssetOrUrl))
           : null,
     ));
   }

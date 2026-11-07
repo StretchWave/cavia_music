@@ -127,7 +127,7 @@ class LocalPlaylistRepository implements PlaylistRepository {
       if (playlists.isEmpty) return const <Playlist>[];
       // One batched query for every playlist's entry count.
       final counts = await db.customSelect(
-        'SELECT playlist_id, COUNT(*) AS c FROM playlist_entries WHERE playlist_id IN (${List.filled(playlists.length, '?').join(', ')}) GROUP BY playlist_id',
+        'SELECT playlist_id, COUNT(*) AS c FROM ${db.dbPlaylistEntries.actualTableName} WHERE playlist_id IN (${List.filled(playlists.length, '?').join(', ')}) GROUP BY playlist_id',
         variables: playlists.map((p) => Variable(p.id)).toList(),
       ).get();
       final countMap = {for (final row in counts) row.data['playlist_id'] as String: row.data['c'] as int};

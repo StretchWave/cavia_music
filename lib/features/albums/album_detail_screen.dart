@@ -123,7 +123,7 @@ class AlbumDetailScreen extends StatelessWidget {
                             child: ElevatedButton.icon(
                               onPressed: () {
                                 if (songs.isNotEmpty) {
-                                  playback.playNow(songs.first);
+                                  playback.playQueue(songs, initialIndex: 0);
                                 }
                               },
                               icon: const Icon(Icons.play_arrow_rounded),
@@ -143,8 +143,7 @@ class AlbumDetailScreen extends StatelessWidget {
                             child: OutlinedButton.icon(
                               onPressed: () {
                                 if (songs.isNotEmpty) {
-                                  final shuffled = List<Song>.from(songs)..shuffle();
-                                  playback.playNow(shuffled.first);
+                                  playback.playQueue(songs, shuffle: true);
                                 }
                               },
                               icon: const Icon(Icons.shuffle_rounded),
@@ -227,7 +226,7 @@ class AlbumDetailScreen extends StatelessWidget {
                               ],
                             ),
                             onTap: () {
-                              playback.playNow(song);
+                              playback.playQueue(songs, initialIndex: index);
                             },
                           );
                         },

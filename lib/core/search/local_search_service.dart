@@ -10,6 +10,7 @@ class LocalSearchService {
   final SearchRepository searchRepository;
 
   Timer? _debounceTimer;
+  Completer<Result<SearchResults, AppError>>? _activeCompleter;
   int _requestEpoch = 0;
 
   LocalSearchService({required this.searchRepository});
@@ -21,22 +22,38 @@ class LocalSearchService {
     String query, {
     Duration debounceDuration = const Duration(milliseconds: 250),
   }) {
-    final completer = Completer<Result<SearchResults, AppError>>();
-
     _debounceTimer?.cancel();
-    final currentEpoch = ++_requestEpoch;
+    if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
+      _activeCompleter!.complete(
+        const Result.failure(ValidationError('Superseded by newer query')),
+      );
+    }
 
     if (query.trim().isEmpty) {
+      _activeCompleter = null;
       return Future.value(const Result.success(SearchResults()));
     }
 
+    final completer = Completer<Result<SearchResults, AppError>>();
+    _activeCompleter = completer;
+    final currentEpoch = ++_requestEpoch;
+
     _debounceTimer = Timer(debounceDuration, () async {
       if (currentEpoch != _requestEpoch) {
+        if (!completer.isCompleted) {
+          completer.complete(
+            const Result.failure(ValidationError('Superseded by newer query')),
+          );
+        }
         return; // superseded silently
       }
       final res = await searchRepository.search(query);
       if (currentEpoch == _requestEpoch && !completer.isCompleted) {
         completer.complete(res);
+      } else if (!completer.isCompleted) {
+        completer.complete(
+          const Result.failure(ValidationError('Superseded by newer query')),
+        );
       }
     });
 
@@ -46,5 +63,11 @@ class LocalSearchService {
   void cancel() {
     _debounceTimer?.cancel();
     _requestEpoch++;
+    if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
+      _activeCompleter!.complete(
+        const Result.failure(ValidationError('Search cancelled')),
+      );
+      _activeCompleter = null;
+    }
   }
 }

@@ -185,7 +185,7 @@ class LocalCacheManager implements CacheManager {
             await tmpFile.delete();
           } catch (_) {}
         }
-        _notifyTrackState(track.id, CacheState.failed);
+        _notifyTrackState(track.id, CacheState.notCached);
         return null;
       }
 

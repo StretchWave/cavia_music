@@ -122,10 +122,32 @@ class ArtistDetailScreen extends StatelessWidget {
                                 ],
                               ),
                               child: ClipOval(
-                                child: Image.asset(
-                                  currentArtist.portraitAsset,
-                                  fit: BoxFit.cover,
-                                ),
+                                child: currentArtist.portraitAsset.startsWith('http://') ||
+                                        currentArtist.portraitAsset.startsWith('https://')
+                                    ? Image.network(
+                                        currentArtist.portraitAsset,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          color: CaviaColors.surfaceDark,
+                                          child: const Icon(
+                                            Icons.person_rounded,
+                                            size: 56,
+                                            color: CaviaColors.textSilver,
+                                          ),
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        currentArtist.portraitAsset,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Container(
+                                          color: CaviaColors.surfaceDark,
+                                          child: const Icon(
+                                            Icons.person_rounded,
+                                            size: 56,
+                                            color: CaviaColors.textSilver,
+                                          ),
+                                        ),
+                                      ),
                               ),
                             ),
                             const SizedBox(height: 12),
@@ -189,7 +211,10 @@ class ArtistDetailScreen extends StatelessWidget {
                           ),
                           onPressed: () => TrackContextMenu.show(context, song),
                         ),
-                        onTap: () => playback.playNow(song),
+                        onTap: () => playback.playQueue(
+                          currentArtist.popularSongs,
+                          initialIndex: index,
+                        ),
                       );
                     }, childCount: currentArtist.popularSongs.length),
                   ),

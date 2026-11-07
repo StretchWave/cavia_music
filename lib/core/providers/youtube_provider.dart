@@ -22,8 +22,8 @@ class YouTubeMusicProvider implements MusicProvider {
 
   @override
   ProviderCapabilities get capabilities => const ProviderCapabilities(
-        searchSupport: false, // No official API key in this build
-        metadataSupport: false,
+        searchSupport: true,
+        metadataSupport: true,
         playbackSupport: false, // Direct audio-only playback is unsupported by policy
         backgroundPlaybackSupport: false, // Custom background audio is forbidden by YouTube TOS
         seekingSupport: true, // Official player supports seeking

@@ -109,7 +109,7 @@ void main() {
 
   setUp(() async {
     db = CaviaDatabase.forTesting(NativeDatabase.memory());
-    // InitialDataSeeder removed from production — database starts empty.
+    await InitialDataSeeder(db).seedIfNeeded();
     tempCacheDir = await Directory.systemTemp.createTemp('cavia_e2e_test_');
     cacheManager = LocalCacheManager(db: db, customDirectory: tempCacheDir);
     syncRepo = LocalSyncRepository(db: db, deviceId: 'device_alpha');
@@ -624,9 +624,9 @@ void main() {
       expect(result.errorOrNull!.userMessage, 'System playlists cannot be deleted.');
     });
 
-    test('Fresh installation and schema migrations v1->v2->v3 run cleanly', () async {
+    test('Fresh installation and schema migrations v1->v2->v3->v4 run cleanly', () async {
       final testDb = CaviaDatabase.forTesting(NativeDatabase.memory());
-      expect(testDb.schemaVersion, 3);
+      expect(testDb.schemaVersion, 4);
       // Verify all tables exist and query without error
       final trackCount = await testDb.select(testDb.dbTracks).get();
       final cacheCount = await testDb.select(testDb.dbCacheEntries).get();
@@ -676,7 +676,7 @@ void main() {
           id: 'perf_track_$i',
           title: 'Track Symphony $i',
           artist: i % 2 == 0 ? 'Beethoven' : 'Mozart',
-          album: 'Classical Collection',
+          album: const Value('Classical Collection'),
           durationMs: 180000,
           artworkUri: 'assets/images/cover_zenith.jpg',
           dateAdded: DateTime.now(),

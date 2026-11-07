@@ -41,6 +41,7 @@ class SearchService {
 
   Timer? _debounceTimer;
   CancellationToken? _activeCancelToken;
+  Completer<Result<SearchResponse, AppError>>? _activeCompleter;
   int _searchEpoch = 0;
 
   SearchService({
@@ -56,12 +57,16 @@ class SearchService {
     int page = 1,
     int pageSize = 20,
   }) {
-    final completer = Completer<Result<SearchResponse, AppError>>();
-
     _debounceTimer?.cancel();
     _activeCancelToken?.cancel();
+    if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
+      _activeCompleter!.complete(
+        const Result.failure(ValidationError('Superseded by newer query')),
+      );
+    }
 
     if (query.trim().isEmpty) {
+      _activeCompleter = null;
       return Future.value(const Result.success(SearchResponse(
         query: '',
         songs: [],
@@ -71,13 +76,19 @@ class SearchService {
       )));
     }
 
+    final completer = Completer<Result<SearchResponse, AppError>>();
+    _activeCompleter = completer;
     final token = CancellationToken();
     _activeCancelToken = token;
     final currentEpoch = ++_searchEpoch;
 
     _debounceTimer = Timer(debounceDuration, () async {
       if (token.isCancelled || currentEpoch != _searchEpoch) {
-        completer.complete(const Result.failure(ValidationError('Superseded by newer query')));
+        if (!completer.isCompleted) {
+          completer.complete(
+            const Result.failure(ValidationError('Superseded by newer query')),
+          );
+        }
         return;
       }
 
@@ -181,5 +192,11 @@ class SearchService {
   void cancel() {
     _debounceTimer?.cancel();
     _activeCancelToken?.cancel();
+    if (_activeCompleter != null && !_activeCompleter!.isCompleted) {
+      _activeCompleter!.complete(
+        const Result.failure(ValidationError('Search cancelled')),
+      );
+      _activeCompleter = null;
+    }
   }
 }

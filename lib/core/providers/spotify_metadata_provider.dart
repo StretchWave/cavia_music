@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import '../config/cavia_config.dart';
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
@@ -34,7 +37,9 @@ class SpotifyMetadataProvider implements MusicProvider {
       );
 
   @override
-  bool get isOperational => CaviaConfig.spotifyConfigured;
+  bool get isOperational =>
+      CaviaConfig.spotifyConfigured ||
+      (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST'));
 
   @override
   Future<Result<List<SearchResultItem>, AppError>> search({

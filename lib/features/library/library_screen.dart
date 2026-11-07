@@ -11,6 +11,8 @@ import '../playlists/create_playlist_dialog.dart';
 import 'liked_songs_screen.dart';
 import '../albums/album_detail_screen.dart';
 import '../artists/artist_detail_screen.dart';
+import '../../core/components/toast.dart';
+import '../../core/state/library_controller.dart';
 
 class LibraryScreen extends StatelessWidget {
   final VoidCallback onOpenSettings;
@@ -200,18 +202,7 @@ class LibraryScreen extends StatelessWidget {
                                   child: GlassContainer(
                                     height: 84,
                                     radius: CaviaGlass.radiusCard,
-                                    onTap: () {
-                                      if (library.albums.isNotEmpty) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => AlbumDetailScreen(
-                                              album: library.albums.first,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
+                                    onTap: () => _showAlbumsSheet(context, library),
                                     child: Center(
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -238,18 +229,7 @@ class LibraryScreen extends StatelessWidget {
                                   child: GlassContainer(
                                     height: 84,
                                     radius: CaviaGlass.radiusCard,
-                                    onTap: () {
-                                      if (library.artists.isNotEmpty) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ArtistDetailScreen(
-                                              artist: library.artists.first,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
+                                    onTap: () => _showArtistsSheet(context, library),
                                     child: Center(
                                       child: Row(
                                         mainAxisAlignment: MainAxisAlignment.center,
@@ -414,6 +394,219 @@ class LibraryScreen extends StatelessWidget {
                     // Bottom padding for mini-player and bottom bar
                     const SliverToBoxAdapter(child: SizedBox(height: 140)),
                   ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showAlbumsSheet(BuildContext context, LibraryController library) {
+    if (library.albums.isEmpty) {
+      CaviaToast.show(context, 'No albums in your library yet', icon: Icons.album_outlined);
+      return;
+    }
+
+    if (library.albums.length == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AlbumDetailScreen(album: library.albums.first),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: CaviaColors.overlaySheet,
+      barrierColor: CaviaColors.scrim,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Albums (${library.albums.length})',
+                      style: CaviaTypography.display.copyWith(fontSize: 18),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: CaviaColors.textSilver),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: CaviaColors.glassBorder),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: library.albums.length,
+                  itemBuilder: (context, index) {
+                    final album = library.albums[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                      leading: ArtworkView(
+                        imageAsset: album.artworkAsset,
+                        width: 48,
+                        height: 48,
+                        radius: 8,
+                      ),
+                      title: Text(
+                        album.title,
+                        style: CaviaTypography.songTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${album.artist} • ${album.year} • ${album.songs.length} tracks',
+                        style: CaviaTypography.artistSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AlbumDetailScreen(album: album),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showArtistsSheet(BuildContext context, LibraryController library) {
+    if (library.artists.isEmpty) {
+      CaviaToast.show(context, 'No artists in your library yet', icon: Icons.person_outline_rounded);
+      return;
+    }
+
+    if (library.artists.length == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArtistDetailScreen(artist: library.artists.first),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: CaviaColors.overlaySheet,
+      barrierColor: CaviaColors.scrim,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Artists (${library.artists.length})',
+                      style: CaviaTypography.display.copyWith(fontSize: 18),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: CaviaColors.textSilver),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: CaviaColors.glassBorder),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: library.artists.length,
+                  itemBuilder: (context, index) {
+                    final artist = library.artists[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                      leading: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                        ),
+                        child: ClipOval(
+                          child: artist.portraitAsset.startsWith('http://') ||
+                                  artist.portraitAsset.startsWith('https://')
+                              ? Image.network(
+                                  artist.portraitAsset,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    color: CaviaColors.surfaceDark,
+                                    child: const Icon(
+                                      Icons.person_rounded,
+                                      color: CaviaColors.textSilver,
+                                      size: 24,
+                                    ),
+                                  ),
+                                )
+                              : Image.asset(
+                                  artist.portraitAsset,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    color: CaviaColors.surfaceDark,
+                                    child: const Icon(
+                                      Icons.person_rounded,
+                                      color: CaviaColors.textSilver,
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      title: Text(
+                        artist.name,
+                        style: CaviaTypography.songTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${artist.albums.length} albums • ${artist.popularSongs.length} tracks',
+                        style: CaviaTypography.artistSubtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ArtistDetailScreen(artist: artist),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ],

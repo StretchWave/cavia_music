@@ -38,7 +38,6 @@ class MiniPlayer extends StatelessWidget {
                 width: 46,
                 height: 46,
                 radius: 10,
-                heroTag: 'player_artwork',
               ),
               const SizedBox(width: 14),
 

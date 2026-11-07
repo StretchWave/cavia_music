@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
@@ -264,12 +265,12 @@ class CaviaDatabase extends _$CaviaDatabase {
         },
         onUpgrade: (m, from, to) async {
           if (from < 2) {
-            await m.createTable(dbSyncOutbox);
-            await m.createTable(dbSyncState);
-            await m.createTable(dbTombstones);
+            await _createTableSafely(m, dbSyncOutbox);
+            await _createTableSafely(m, dbSyncState);
+            await _createTableSafely(m, dbTombstones);
           }
           if (from < 3) {
-            await m.createTable(dbCacheEntries);
+            await _createTableSafely(m, dbCacheEntries);
           }
           if (from < 4) {
             await upgradeToV4(m);
@@ -283,6 +284,37 @@ class CaviaDatabase extends _$CaviaDatabase {
         },
       );
 
+  Future<bool> _tableExists(TableInfo table) async {
+    final result = await customSelect(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=?;",
+      variables: [Variable.withString(table.actualTableName)],
+    ).get();
+    return result.isNotEmpty;
+  }
+
+  Future<void> _createTableSafely(Migrator m, TableInfo table) async {
+    if (!await _tableExists(table)) {
+      await m.createTable(table);
+    }
+  }
+
+  Future<void> _addColumnSafely(
+    Migrator m,
+    TableInfo table,
+    GeneratedColumn column,
+  ) async {
+    if (!await _tableExists(table)) return;
+    final existingColumns = await customSelect(
+      "PRAGMA table_info('${table.actualTableName}');",
+    ).get();
+    final columnNames = existingColumns
+        .map((row) => row.read<String>('name').toLowerCase())
+        .toSet();
+    if (!columnNames.contains(column.$name.toLowerCase())) {
+      await m.addColumn(table, column);
+    }
+  }
+
   /// v3 → v4:
   /// 1. Adds real-library columns (file identity, album/artist metadata,
   ///    revision counters, playback speed).
@@ -293,20 +325,20 @@ class CaviaDatabase extends _$CaviaDatabase {
   ///    compatible with the PostgreSQL UUID cloud schema (old fake-offline
   ///    OAuth never wrote to the cloud, so no cloud row references these IDs).
   Future<void> upgradeToV4(Migrator m) async {
-    // -- 1. New columns ------------------------------------------------------
-    await m.addColumn(dbTracks, dbTracks.albumArtist);
-    await m.addColumn(dbTracks, dbTracks.trackNumber);
-    await m.addColumn(dbTracks, dbTracks.discNumber);
-    await m.addColumn(dbTracks, dbTracks.releaseYear);
-    await m.addColumn(dbTracks, dbTracks.genre);
-    await m.addColumn(dbTracks, dbTracks.filePath);
-    await m.addColumn(dbTracks, dbTracks.fileFormat);
-    await m.addColumn(dbTracks, dbTracks.fileSizeBytes);
-    await m.addColumn(dbPlaylists, dbPlaylists.revision);
-    await m.addColumn(dbPlaylists, dbPlaylists.sourceProvider);
-    await m.addColumn(dbPlaylists, dbPlaylists.sourcePlaylistId);
-    await m.addColumn(dbPlaylistEntries, dbPlaylistEntries.revision);
-    await m.addColumn(dbQueueState, dbQueueState.speed);
+    // -- 1. New columns (safely applied if not already present) ---------------
+    await _addColumnSafely(m, dbTracks, dbTracks.albumArtist);
+    await _addColumnSafely(m, dbTracks, dbTracks.trackNumber);
+    await _addColumnSafely(m, dbTracks, dbTracks.discNumber);
+    await _addColumnSafely(m, dbTracks, dbTracks.releaseYear);
+    await _addColumnSafely(m, dbTracks, dbTracks.genre);
+    await _addColumnSafely(m, dbTracks, dbTracks.filePath);
+    await _addColumnSafely(m, dbTracks, dbTracks.fileFormat);
+    await _addColumnSafely(m, dbTracks, dbTracks.fileSizeBytes);
+    await _addColumnSafely(m, dbPlaylists, dbPlaylists.revision);
+    await _addColumnSafely(m, dbPlaylists, dbPlaylists.sourceProvider);
+    await _addColumnSafely(m, dbPlaylists, dbPlaylists.sourcePlaylistId);
+    await _addColumnSafely(m, dbPlaylistEntries, dbPlaylistEntries.revision);
+    await _addColumnSafely(m, dbQueueState, dbQueueState.speed);
 
     await _createV4Indexes();
 
@@ -317,77 +349,110 @@ class CaviaDatabase extends _$CaviaDatabase {
     await _migrateLegacyIdsToUuids();
 
     // -- 4. Clear the fabricated cache-size stat ----------------------------
-    await (delete(dbPreferences)..where((tbl) => tbl.key.equals('currentCacheSizeBytes'))).go();
+    if (await _tableExists(dbPreferences)) {
+      await (delete(dbPreferences)..where((tbl) => tbl.key.equals('currentCacheSizeBytes'))).go();
+    }
   }
 
   Future<void> _createV4Indexes() async {
     // Partial uniqueness is enforced in the repositories; these indexes carry
     // the hot query paths (search, playlist views, recently played).
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_tracks_provider ON tracks(provider_id, provider_track_id);');
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(lower(album));');
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_tracks_last_played ON tracks(last_played_at DESC);');
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_entries_playlist_pos ON playlist_entries(playlist_id, position ASC);');
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_playlists_profile ON playlists(profile_id, updated_at DESC);');
-    await customStatement(
-        'CREATE INDEX IF NOT EXISTS idx_search_history_profile ON search_history(profile_id, created_at DESC);');
+    if (await _tableExists(dbTracks)) {
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_tracks_provider ON ${dbTracks.actualTableName}(provider_id, provider_track_id);');
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_tracks_album ON ${dbTracks.actualTableName}(lower(album));');
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_tracks_last_played ON ${dbTracks.actualTableName}(last_played_at DESC);');
+    }
+    if (await _tableExists(dbPlaylistEntries)) {
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_entries_playlist_pos ON ${dbPlaylistEntries.actualTableName}(playlist_id, position ASC);');
+    }
+    if (await _tableExists(dbPlaylists)) {
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_playlists_profile ON ${dbPlaylists.actualTableName}(profile_id, updated_at DESC);');
+    }
+    if (await _tableExists(dbSearchHistory)) {
+      await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_search_history_profile ON ${dbSearchHistory.actualTableName}(profile_id, created_at DESC);');
+    }
   }
 
   Future<void> _purgeDemonstrationData() async {
     // Tracks (and by FK cascade their likes, queue rows, cache rows, entries).
-    for (final trackId in demoTrackIds) {
-      await (delete(dbTracks)..where((tbl) => tbl.id.equals(trackId))).go();
+    if (await _tableExists(dbTracks)) {
+      for (final trackId in demoTrackIds) {
+        await (delete(dbTracks)..where((tbl) => tbl.id.equals(trackId))).go();
+      }
     }
-    for (final playlistId in demoPlaylistIds) {
-      await (delete(dbPlaylists)..where((tbl) => tbl.id.equals(playlistId))).go();
+    if (await _tableExists(dbPlaylists)) {
+      for (final playlistId in demoPlaylistIds) {
+        await (delete(dbPlaylists)..where((tbl) => tbl.id.equals(playlistId))).go();
+      }
     }
     // Legacy seeded entries whose playlist rows were already gone. User entry
     // ids always begin `pe_pl_…` (user playlists start `pl_`), so `pe_pl followed
     // by a digit` only occurs in the deterministic demo artifacts.
-    await (delete(dbPlaylistEntries)
-          ..where((tbl) =>
-              tbl.id.like('pe_pl1%') | tbl.id.like('pe_pl2%') | tbl.id.like('pe_pl3%')))
-        .go();
+    if (await _tableExists(dbPlaylistEntries)) {
+      await (delete(dbPlaylistEntries)
+            ..where((tbl) =>
+                tbl.id.like('pe_pl1%') | tbl.id.like('pe_pl2%') | tbl.id.like('pe_pl3%')))
+          .go();
+    }
     // Queue artifacts left over by the demo (entries + its single state row).
-    await (delete(dbQueueEntries)..where((tbl) => tbl.id.like('queue_init%'))).go();
-    await delete(dbQueueState).go();
-    for (final id in const ['sh_0', 'sh_1', 'sh_2', 'sh_3', 'sh_4']) {
-      await (delete(dbSearchHistory)..where((tbl) => tbl.id.equals(id))).go();
+    if (await _tableExists(dbQueueEntries)) {
+      await (delete(dbQueueEntries)..where((tbl) => tbl.id.like('queue_init%'))).go();
+    }
+    if (await _tableExists(dbQueueState)) {
+      await delete(dbQueueState).go();
+    }
+    if (await _tableExists(dbSearchHistory)) {
+      for (final id in const ['sh_0', 'sh_1', 'sh_2', 'sh_3', 'sh_4']) {
+        await (delete(dbSearchHistory)..where((tbl) => tbl.id.equals(id))).go();
+      }
     }
     // Albums / artists: exact ID *and* the exact seeded title must both match.
-    for (int i = 0; i < demoAlbumIds.length; i++) {
-      await (delete(dbAlbums)
-            ..where((tbl) => tbl.id.equals(demoAlbumIds.elementAt(i)) &
-                tbl.title.equals(demoAlbumTitles[i])))
-          .go();
+    if (await _tableExists(dbAlbums)) {
+      for (int i = 0; i < demoAlbumIds.length; i++) {
+        await (delete(dbAlbums)
+              ..where((tbl) => tbl.id.equals(demoAlbumIds.elementAt(i)) &
+                  tbl.title.equals(demoAlbumTitles[i])))
+            .go();
+      }
     }
     // Artists have no stable demo-title list; their elevated is_followed flags
     // were seeded only with globalArtistFlags in the same transaction.
-    for (final artistId in demoArtistIds) {
-      await (delete(dbArtists)..where((tbl) => tbl.id.equals(artistId))).go();
+    if (await _tableExists(dbArtists)) {
+      for (final artistId in demoArtistIds) {
+        await (delete(dbArtists)..where((tbl) => tbl.id.equals(artistId))).go();
+      }
     }
     // Outbox rows that would try to push demo entities into the cloud.
-    await (delete(dbSyncOutbox)
-          ..where((tbl) =>
-              tbl.entityId.isIn(demoTrackIds.toList()) |
-              tbl.entityId.isIn(demoPlaylistIds.toList()) |
-              tbl.entityId.like('pe_pl1%') |
-              tbl.entityId.like('pe_pl2%') |
-              tbl.entityId.like('pe_pl3%')))
-        .go();
+    if (await _tableExists(dbSyncOutbox)) {
+      await (delete(dbSyncOutbox)
+            ..where((tbl) =>
+                tbl.entityId.isIn(demoTrackIds.toList()) |
+                tbl.entityId.isIn(demoPlaylistIds.toList()) |
+                tbl.entityId.like('pe_pl1%') |
+                tbl.entityId.like('pe_pl2%') |
+                tbl.entityId.like('pe_pl3%')))
+          .go();
+    }
     // Dangling tombstones for the same artifacts.
-    await (delete(dbTombstones)
-          ..where((tbl) =>
-              tbl.entityId.isIn(demoTrackIds.toList()) |
-              tbl.entityId.isIn(demoPlaylistIds.toList())))
-        .go();
+    if (await _tableExists(dbTombstones)) {
+      await (delete(dbTombstones)
+            ..where((tbl) =>
+                tbl.entityId.isIn(demoTrackIds.toList()) |
+                tbl.entityId.isIn(demoPlaylistIds.toList())))
+          .go();
+    }
   }
 
   Future<void> _migrateLegacyIdsToUuids() async {
+    if (!await _tableExists(dbPlaylists) || !await _tableExists(dbPlaylistEntries)) {
+      return;
+    }
     final legacyPlaylists = (await select(dbPlaylists).get())
         .where((r) => r.id.startsWith('pl_') && !_isUuid(r.id))
         .toList();
@@ -457,6 +522,9 @@ class CaviaDatabase extends _$CaviaDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
+    if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
+      return NativeDatabase.memory();
+    }
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'cavia_music.sqlite'));
 

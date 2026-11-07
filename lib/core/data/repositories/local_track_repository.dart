@@ -383,7 +383,7 @@ class LocalTrackRepository implements TrackRepository {
           ),
         );
         await db.customStatement(
-          'UPDATE tracks SET play_count = play_count + 1, last_played_at = ? WHERE id = ?',
+          'UPDATE ${db.dbTracks.actualTableName} SET play_count = play_count + 1, last_played_at = ? WHERE id = ?',
           [DateTime.now().toIso8601String(), trackId],
         );
       });
@@ -605,10 +605,9 @@ class LocalTrackRepository implements TrackRepository {
         }
         return (a.trackNumber ?? 0).compareTo(b.trackNumber ?? 0);
       });
-      final year = albumTracks
-          .map((t) => t.releaseYear)
-          .whereType<int>()
-          .reduce((a, b) => a > b ? a : b);
+      final years =
+          albumTracks.map((t) => t.releaseYear).whereType<int>().toList();
+      final year = years.isNotEmpty ? years.reduce((a, b) => a > b ? a : b) : 0;
       final artwork = albumTracks
           .map((t) => t.artworkUri)
           .firstWhere((u) => u.trim().isNotEmpty, orElse: () => '');

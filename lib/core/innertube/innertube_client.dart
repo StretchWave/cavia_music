@@ -288,44 +288,127 @@ class InnerTubeClient {
       final contents = json['contents'];
       if (contents == null) return;
 
-      // Extract section list or tab content
       final tabRenderer = contents['tabbedSearchResultsRenderer']?['tabs']?[0]?['tabRenderer']?['content'];
       final sectionList = tabRenderer?['sectionListRenderer']?['contents'] as List? ?? [];
 
-      for (final section in sectionList) {
-        final shelf = section['musicCardShelfRenderer'] ?? section['musicShelfRenderer'];
-        if (shelf == null) continue;
+      final renderers = <Map>[];
 
-        final shelfContents = shelf['contents'] as List? ?? [];
-        for (final item in shelfContents) {
-          if (items.length >= limit) return;
-          final renderer = item['musicResponsiveListItemRenderer'];
-          if (renderer == null) continue;
-
-          final videoId = renderer['playlistItemData']?['videoId'] as String? ??
-              _extractVideoIdFromFlexColumns(renderer);
-          if (videoId == null || videoId.isEmpty) continue;
-
-          final title = _extractRunText(renderer, 0) ?? 'Unknown Title';
-          final artist = _extractRunText(renderer, 1) ?? 'Unknown Artist';
-          final album = _extractRunText(renderer, 2) ?? 'Single';
-
-          final thumbnails = renderer['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
-          final artworkUrl = (thumbnails != null && thumbnails.isNotEmpty)
-              ? (thumbnails.last['url'] as String? ?? '')
-              : '';
-
-          items.add(InnerTubeSongItem(
-            videoId: videoId,
-            title: title,
-            artist: artist,
-            album: album,
-            duration: _extractDuration(renderer) ?? Duration.zero,
-            artworkUrl: artworkUrl,
-          ));
+      void collectRenderers(dynamic node) {
+        if (node is List) {
+          for (final item in node) {
+            collectRenderers(item);
+          }
+        } else if (node is Map) {
+          if (node.containsKey('musicResponsiveListItemRenderer')) {
+            renderers.add(node['musicResponsiveListItemRenderer'] as Map);
+          } else {
+            for (final value in node.values) {
+              if (value is Map || value is List) {
+                collectRenderers(value);
+              }
+            }
+          }
         }
       }
+
+      collectRenderers(sectionList);
+
+      final seenVideoIds = <String>{};
+
+      for (final renderer in renderers) {
+        if (items.length >= limit) return;
+
+        final videoId = _extractVideoId(renderer);
+        if (videoId == null || videoId.isEmpty || !seenVideoIds.add(videoId)) continue;
+
+        final title = _extractRunText(renderer, 0) ?? 'Unknown Title';
+        final parsedMeta = _extractMetadata(renderer);
+
+        final thumbnails = renderer['thumbnail']?['musicThumbnailRenderer']?['thumbnail']?['thumbnails'] as List?;
+        final artworkUrl = (thumbnails != null && thumbnails.isNotEmpty)
+            ? (thumbnails.last['url'] as String? ?? '')
+            : '';
+
+        items.add(InnerTubeSongItem(
+          videoId: videoId,
+          title: title,
+          artist: parsedMeta.artist,
+          album: parsedMeta.album,
+          duration: parsedMeta.duration ?? _extractDuration(renderer) ?? Duration.zero,
+          artworkUrl: artworkUrl,
+        ));
+      }
     } catch (_) {}
+  }
+
+  String? _extractVideoId(Map renderer) {
+    try {
+      // 1. playlistItemData
+      final pId = renderer['playlistItemData']?['videoId'] as String?;
+      if (pId != null && pId.isNotEmpty) return pId;
+
+      // 2. overlay play button watchEndpoint
+      final overlayId = renderer['overlay']?['musicItemThumbnailOverlayRenderer']?['content']?['musicPlayButtonRenderer']?['playNavigationEndpoint']?['watchEndpoint']?['videoId'] as String?;
+      if (overlayId != null && overlayId.isNotEmpty) return overlayId;
+
+      // 3. flexColumns runs watchEndpoint
+      final flexId = _extractVideoIdFromFlexColumns(renderer);
+      if (flexId != null && flexId.isNotEmpty) return flexId;
+
+      // 4. direct navigationEndpoint
+      final navId = renderer['navigationEndpoint']?['watchEndpoint']?['videoId'] as String?;
+      if (navId != null && navId.isNotEmpty) return navId;
+
+      // 5. doubleTapCommand watchEndpoint
+      final dtId = renderer['doubleTapCommand']?['watchEndpoint']?['videoId'] as String?;
+      if (dtId != null && dtId.isNotEmpty) return dtId;
+    } catch (_) {}
+    return null;
+  }
+
+  _ParsedMetadata _extractMetadata(Map renderer) {
+    try {
+      final flexColumns = renderer['flexColumns'] as List?;
+      if (flexColumns == null || flexColumns.length < 2) {
+        return const _ParsedMetadata(artist: 'Unknown Artist', album: 'Single');
+      }
+
+      // Collect all text runs across column 1 and subsequent columns
+      final allTokens = <String>[];
+      Duration? foundDuration;
+      final durationPattern = RegExp(r'^(\d{1,2}):(\d{2})$');
+
+      for (int i = 1; i < flexColumns.length; i++) {
+        final runs = flexColumns[i]['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
+        if (runs == null) continue;
+        for (final r in runs) {
+          final text = (r['text'] as String? ?? '').trim();
+          if (text.isEmpty || text == '•' || text == '&' || text == ',') continue;
+          
+          final match = durationPattern.firstMatch(text);
+          if (match != null) {
+            foundDuration = Duration(
+              minutes: int.parse(match.group(1)!),
+              seconds: int.parse(match.group(2)!),
+            );
+          } else if (!text.toLowerCase().contains('views') && !text.toLowerCase().contains('plays')) {
+            allTokens.add(text);
+          }
+        }
+      }
+
+      // Remove leading "Song" or "Video" token if present
+      if (allTokens.isNotEmpty && (allTokens.first.toLowerCase() == 'song' || allTokens.first.toLowerCase() == 'video')) {
+        allTokens.removeAt(0);
+      }
+
+      final artist = allTokens.isNotEmpty ? allTokens[0] : 'Unknown Artist';
+      final album = allTokens.length > 1 ? allTokens[1] : 'Single';
+
+      return _ParsedMetadata(artist: artist, album: album, duration: foundDuration);
+    } catch (_) {
+      return const _ParsedMetadata(artist: 'Unknown Artist', album: 'Single');
+    }
   }
 
   /// Extracts the track duration from the list item's flex column runs
@@ -380,5 +463,13 @@ class InnerTubeClient {
     } catch (_) {}
     return null;
   }
+}
+
+class _ParsedMetadata {
+  final String artist;
+  final String album;
+  final Duration? duration;
+
+  const _ParsedMetadata({required this.artist, required this.album, this.duration});
 }
 

@@ -15,6 +15,7 @@ import '../database/cavia_database.dart';
 class LocalSearchRepository implements SearchRepository {
   final CaviaDatabase db;
   final Uuid _uuid = const Uuid();
+  static int _microTick = 0;
 
   LocalSearchRepository(this.db);
 
@@ -131,7 +132,6 @@ class LocalSearchRepository implements SearchRepository {
       ..where((tbl) => tbl.profileId.equals(pid))
       ..orderBy([
         (tbl) => OrderingTerm(expression: tbl.createdAt, mode: OrderingMode.desc),
-        (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.desc),
       ])
       ..limit(10);
 
@@ -145,7 +145,7 @@ class LocalSearchRepository implements SearchRepository {
 
     try {
       final pid = _resolveProfile(profileId);
-      final now = DateTime.now().toUtc();
+      final now = DateTime.now().toUtc().add(Duration(seconds: ++_microTick));
       final id = _uuid.v4();
 
       await db.transaction(() async {
@@ -169,7 +169,6 @@ class LocalSearchRepository implements SearchRepository {
               ..where((tbl) => tbl.profileId.equals(pid))
               ..orderBy([
                 (tbl) => OrderingTerm(expression: tbl.createdAt, mode: OrderingMode.desc),
-                (tbl) => OrderingTerm(expression: tbl.id, mode: OrderingMode.desc),
               ]))
             .get();
 

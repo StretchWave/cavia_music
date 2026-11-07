@@ -53,89 +53,94 @@ class _PlaylistEditDialogState extends State<PlaylistEditDialog> {
           blur: CaviaGlass.blurHeavy,
           surfaceColor: CaviaColors.overlaySheet,
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Edit Playlist Details',
-                style: CaviaTypography.display.copyWith(fontSize: 20),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _nameController,
-                style: const TextStyle(color: CaviaColors.textIvory),
-                decoration: InputDecoration(
-                  labelText: 'Playlist Name',
-                  labelStyle: const TextStyle(color: CaviaColors.textSilver),
-                  filled: true,
-                  fillColor: CaviaColors.glassSurface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: CaviaColors.glassBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: CaviaColors.vermilionBright),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _descController,
-                style: const TextStyle(color: CaviaColors.textIvory),
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  labelStyle: const TextStyle(color: CaviaColors.textSilver),
-                  filled: true,
-                  fillColor: CaviaColors.glassSurface,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: CaviaColors.glassBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: CaviaColors.vermilionBright),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+          child: Material(
+            color: Colors.transparent,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: CaviaColors.textSilver),
-                    ),
+                  Text(
+                    'Edit Playlist Details',
+                    style: CaviaTypography.display.copyWith(fontSize: 20),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      final name = _nameController.text.trim();
-                      if (name.isNotEmpty) {
-                        library.editPlaylist(
-                          widget.playlist.id,
-                          name,
-                          _descController.text.trim(),
-                        );
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: CaviaColors.vermilion,
-                      foregroundColor: CaviaColors.textIvory,
-                      shape: RoundedRectangleBorder(
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _nameController,
+                    style: const TextStyle(color: CaviaColors.textIvory),
+                    decoration: InputDecoration(
+                      labelText: 'Playlist Name',
+                      labelStyle: const TextStyle(color: CaviaColors.textSilver),
+                      filled: true,
+                      fillColor: CaviaColors.glassSurface,
+                      border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: CaviaColors.glassBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: CaviaColors.vermilionBright),
                       ),
                     ),
-                    child: const Text('Save'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _descController,
+                    style: const TextStyle(color: CaviaColors.textIvory),
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      labelStyle: const TextStyle(color: CaviaColors.textSilver),
+                      filled: true,
+                      fillColor: CaviaColors.glassSurface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: CaviaColors.glassBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: CaviaColors.vermilionBright),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: CaviaColors.textSilver),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          final name = _nameController.text.trim();
+                          if (name.isNotEmpty) {
+                            library.editPlaylist(
+                              widget.playlist.id,
+                              name,
+                              _descController.text.trim(),
+                            );
+                            Navigator.pop(context);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: CaviaColors.vermilion,
+                          foregroundColor: CaviaColors.textIvory,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Save'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),

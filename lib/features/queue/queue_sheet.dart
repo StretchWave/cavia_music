@@ -158,7 +158,7 @@ class QueueSheet extends StatelessWidget {
                     final isCurrent = song.id == current?.id;
 
                     return ListTile(
-                      key: ValueKey(song.id),
+                      key: ValueKey('${song.id}_$index'),
                       contentPadding: const EdgeInsets.symmetric(vertical: 4),
                       leading: ArtworkView(
                         imageAsset: song.artworkAsset,

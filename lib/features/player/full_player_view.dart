@@ -137,7 +137,6 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                 height: artSize,
                                 radius: CaviaGlass.radiusCard,
                                 showGlassArc: true,
-                                heroTag: 'player_artwork',
                               ),
                             ),
 

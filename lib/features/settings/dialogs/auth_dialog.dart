@@ -99,10 +99,11 @@ class _AuthDialogState extends State<AuthDialog> {
           padding: const EdgeInsets.all(24),
           child: Material(
             color: Colors.transparent,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 // Header & Mode Toggle
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -233,6 +234,7 @@ class _AuthDialogState extends State<AuthDialog> {
                   ],
                 ),
               ],
+            ),
             ),
           ),
         ),

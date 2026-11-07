@@ -152,18 +152,26 @@ class _LyricsScreenState extends State<LyricsScreen> {
                         color: CaviaColors.textIvory,
                         onPressed: widget.onClose,
                       ),
-                      Column(
-                        children: [
-                          Text(
-                            song.title,
-                            style: CaviaTypography.songTitle,
-                            maxLines: 1,
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Column(
+                            children: [
+                              Text(
+                                song.title,
+                                style: CaviaTypography.songTitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                song.artist,
+                                style: CaviaTypography.artistSubtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          Text(
-                            song.artist,
-                            style: CaviaTypography.artistSubtitle,
-                          ),
-                        ],
+                        ),
                       ),
                       IconButton(
                         icon: Icon(

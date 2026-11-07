@@ -7,7 +7,7 @@ import 'package:cavia_music/core/providers/local_audio_provider.dart';
 import 'package:cavia_music/core/providers/youtube_provider.dart';
 import 'package:cavia_music/core/providers/spotify_metadata_provider.dart';
 import 'package:cavia_music/core/playback/playback_source.dart';
-import 'package:cavia_music/core/playback/mock_audio_engine.dart';
+import 'helpers/mock_audio_engine.dart';
 import 'package:cavia_music/core/playback/track_resolver.dart';
 import 'package:cavia_music/core/playback/queue_manager.dart';
 import 'package:cavia_music/core/playback/cavia_audio_handler.dart';
@@ -157,11 +157,11 @@ void main() {
       controller.playNow(songC);
 
       // The active current song should immediately track the latest selection
-      expect(controller.currentSong.id, songC.id);
+      expect(controller.currentSong?.id, songC.id);
 
       await Future.delayed(const Duration(milliseconds: 30));
       // Stale earlier requests must NOT overwrite song C
-      expect(controller.currentSong.id, songC.id);
+      expect(controller.currentSong?.id, songC.id);
 
       controller.dispose();
     });

@@ -97,6 +97,23 @@ void main() {
 
       expect(lyrics, isNull);
     });
+
+    test('parseLrc handles lines with multiple timestamps [mm:ss.xx][mm:ss.xx] properly', () {
+      const sampleLrc = '''
+[00:10.00][01:30.00] Repeated chorus hook
+[00:25.00] Verse 1 line
+''';
+
+      final lines = LrcLibService.parseLrc(sampleLrc);
+      expect(lines, isNotNull);
+      expect(lines!.length, 3);
+      expect(lines[0].timestamp, const Duration(seconds: 10));
+      expect(lines[0].text, 'Repeated chorus hook');
+      expect(lines[1].timestamp, const Duration(seconds: 25));
+      expect(lines[1].text, 'Verse 1 line');
+      expect(lines[2].timestamp, const Duration(minutes: 1, seconds: 30));
+      expect(lines[2].text, 'Repeated chorus hook');
+    });
   });
 }
 

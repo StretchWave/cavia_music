@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cavia_music/core/data/database/cavia_database.dart';
 import 'package:cavia_music/core/data/repositories/local_settings_repository.dart';
 import 'package:cavia_music/core/data/repositories/local_track_repository.dart';
-import 'package:cavia_music/core/data/seeds/initial_data_seeder.dart';
 import 'package:cavia_music/core/domain/models/track.dart';
 import 'package:cavia_music/core/playback/playback_failure.dart';
 import 'package:cavia_music/core/playback/playback_source.dart';

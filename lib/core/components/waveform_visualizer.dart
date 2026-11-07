@@ -32,7 +32,7 @@ class WaveformVisualizer extends StatelessWidget {
       onHorizontalDragUpdate: (details) {
         if (onSeek == null) return;
         final box = context.findRenderObject() as RenderBox?;
-        if (box == null) return;
+        if (box == null || box.size.width <= 0) return;
         final localX = details.localPosition.dx;
         final fraction = (localX / box.size.width).clamp(0.0, 1.0);
         onSeek!(fraction);
@@ -40,7 +40,7 @@ class WaveformVisualizer extends StatelessWidget {
       onTapDown: (details) {
         if (onSeek == null) return;
         final box = context.findRenderObject() as RenderBox?;
-        if (box == null) return;
+        if (box == null || box.size.width <= 0) return;
         final localX = details.localPosition.dx;
         final fraction = (localX / box.size.width).clamp(0.0, 1.0);
         onSeek!(fraction);
@@ -73,6 +73,7 @@ class _WaveformPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || barHeights.isEmpty) return;
     final barCount = barHeights.length;
     final totalSpacing = size.width / barCount;
     final barWidth = (totalSpacing * 0.55).clamp(2.0, 4.0);

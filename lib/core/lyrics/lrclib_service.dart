@@ -91,26 +91,27 @@ class LrcLibService {
       final text = raw.trim();
       if (text.isEmpty) continue;
 
-      final match = _lrcTimestampRegex.firstMatch(text);
-      if (match == null) continue;
+      final matches = _lrcTimestampRegex.allMatches(text).toList();
+      if (matches.isEmpty) continue;
 
-      final minutes = int.tryParse(match.group(1) ?? '0') ?? 0;
-      final seconds = int.tryParse(match.group(2) ?? '0') ?? 0;
-      final fracStr = match.group(3) ?? '0';
+      final lyricText = text.replaceAll(_lrcTimestampRegex, '').trim();
+      if (lyricText.isEmpty) continue;
 
-      var ms = 0;
-      if (fracStr.length == 1) {
-        ms = (int.tryParse(fracStr) ?? 0) * 100;
-      } else if (fracStr.length == 2) {
-        ms = (int.tryParse(fracStr) ?? 0) * 10;
-      } else {
-        ms = int.tryParse(fracStr) ?? 0;
-      }
+      for (final match in matches) {
+        final minutes = int.tryParse(match.group(1) ?? '0') ?? 0;
+        final seconds = int.tryParse(match.group(2) ?? '0') ?? 0;
+        final fracStr = match.group(3) ?? '0';
 
-      final timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: ms);
-      final lyricText = text.replaceFirst(_lrcTimestampRegex, '').trim();
+        var ms = 0;
+        if (fracStr.length == 1) {
+          ms = (int.tryParse(fracStr) ?? 0) * 100;
+        } else if (fracStr.length == 2) {
+          ms = (int.tryParse(fracStr) ?? 0) * 10;
+        } else {
+          ms = int.tryParse(fracStr) ?? 0;
+        }
 
-      if (lyricText.isNotEmpty) {
+        final timestamp = Duration(minutes: minutes, seconds: seconds, milliseconds: ms);
         result.add(LyricLine(timestamp: timestamp, text: lyricText));
       }
     }

@@ -19,7 +19,7 @@ void main() {
 
     test('Initial state is playing with Afterglow as default track', () {
       expect(playback.isPlaying, true);
-      expect(playback.currentSong.title, 'Afterglow');
+      expect(playback.currentSong?.title, 'Afterglow');
       expect(playback.currentPosition.inSeconds, 138); // 2 min 18 sec
       expect(playback.queue.isNotEmpty, true);
     });
@@ -185,6 +185,9 @@ void main() {
       // Verify Mini-Player exists with currently playing track
       expect(find.text('Afterglow'), findsWidgets);
       expect(find.text('Luna Caine'), findsWidgets);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
     });
 
     testWidgets('Switch tabs between Library, Search, and Settings', (tester) async {
@@ -212,6 +215,9 @@ void main() {
       expect(find.text('Offline caching'), findsOneWidget);
       expect(find.text('Clear cache'), findsOneWidget);
       expect(find.text('Import from Spotify'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
     });
 
     testWidgets('Full Player expands on Mini-Player tap and collapses on chevron down', (tester) async {
@@ -233,6 +239,9 @@ void main() {
 
       // Verify returned to Library screen
       expect(find.text('藏'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
     });
 
     testWidgets('Search query displays filtered results and allows clearing', (tester) async {
@@ -258,6 +267,9 @@ void main() {
 
       // Should return to recent searches
       expect(find.text('RECENT SEARCHES'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
     });
   });
 }

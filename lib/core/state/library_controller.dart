@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/music_models.dart';
+import '../mock_data/mock_library.dart';
 import '../domain/repositories/track_repository.dart';
 import '../domain/repositories/playlist_repository.dart';
 import '../domain/repositories/search_repository.dart';
@@ -38,7 +39,15 @@ class LibraryController extends ChangeNotifier {
     this.searchRepository,
     this.profileId = 'guest',
   }) {
-    _initFromRepositories();
+    if (trackRepository == null && playlistRepository == null && searchRepository == null) {
+      _songs = List.from(MockLibrary.allSongs);
+      _playlists = List.from(MockLibrary.allPlaylists);
+      _albums = List.from(MockLibrary.allAlbums);
+      _artists = List.from(MockLibrary.allArtists);
+      _searchHistory = List.from(MockLibrary.initialSearchHistory);
+    } else {
+      _initFromRepositories();
+    }
   }
 
   void _initFromRepositories() {
@@ -132,7 +141,17 @@ class LibraryController extends ChangeNotifier {
 
   Future<bool> toggleLikeSong(Song song) async {
     final tRepo = trackRepository;
-    if (tRepo == null) return false;
+    if (tRepo == null) {
+      final idx = _songs.indexWhere((s) => s.id == song.id);
+      if (idx != -1) {
+        final current = _songs[idx];
+        final updated = current.copyWith(isLiked: !current.isLiked);
+        _songs = List<Song>.from(_songs)..[idx] = updated;
+        notifyListeners();
+        return updated.isLiked;
+      }
+      return false;
+    }
 
     final result = await tRepo.toggleLike(song.id, profileId: profileId);
     if (result.isSuccess) {
@@ -152,7 +171,22 @@ class LibraryController extends ChangeNotifier {
     if (trimmedName.isEmpty) return null;
 
     final pRepo = playlistRepository;
-    if (pRepo == null) return null;
+    if (pRepo == null) {
+      final newPlaylist = Playlist(
+        id: 'pl_${DateTime.now().millisecondsSinceEpoch}',
+        name: trimmedName,
+        description: description.trim().isEmpty
+            ? 'Personal sanctuary collection.'
+            : description.trim(),
+        artworkUri: 'assets/images/cover_zenith.jpg',
+        songs: _songs.take(3).toList(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      _playlists = [newPlaylist, ..._playlists];
+      notifyListeners();
+      return newPlaylist;
+    }
 
     final result = await pRepo.createPlaylist(
       trimmedName,
@@ -168,7 +202,21 @@ class LibraryController extends ChangeNotifier {
 
   Future<bool> editPlaylist(String id, String name, String description) async {
     final pRepo = playlistRepository;
-    if (pRepo == null) return false;
+    if (pRepo == null) {
+      final idx = _playlists.indexWhere((p) => p.id == id);
+      if (idx != -1) {
+        final current = _playlists[idx];
+        _playlists = List<Playlist>.from(_playlists)
+          ..[idx] = current.copyWith(
+            name: name.trim(),
+            description: description.trim(),
+            updatedAt: DateTime.now(),
+          );
+        notifyListeners();
+        return true;
+      }
+      return false;
+    }
     final result = await pRepo.editPlaylist(
       id,
       name: name.trim(),
@@ -184,7 +232,11 @@ class LibraryController extends ChangeNotifier {
 
   Future<bool> deletePlaylist(String id) async {
     final pRepo = playlistRepository;
-    if (pRepo == null) return false;
+    if (pRepo == null) {
+      _playlists = _playlists.where((p) => p.id != id).toList();
+      notifyListeners();
+      return true;
+    }
     final result = await pRepo.deletePlaylist(id);
     if (result.isFailure) {
       _lastLibraryError = result.errorOrNull?.userMessage;
@@ -348,15 +400,34 @@ class LibraryController extends ChangeNotifier {
   Future<void> addSearchHistory(String query) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
-    await searchRepository?.addSearchQuery(trimmed, profileId: profileId);
+    if (searchRepository != null) {
+      await searchRepository!.addSearchQuery(trimmed, profileId: profileId);
+    } else {
+      final list = List<String>.from(_searchHistory)
+        ..remove(trimmed)
+        ..insert(0, trimmed);
+      _searchHistory = list;
+      notifyListeners();
+    }
   }
 
   Future<void> removeSearchHistory(String query) async {
-    await searchRepository?.removeSearchQuery(query, profileId: profileId);
+    if (searchRepository != null) {
+      await searchRepository!.removeSearchQuery(query, profileId: profileId);
+    } else {
+      final list = List<String>.from(_searchHistory)..remove(query);
+      _searchHistory = list;
+      notifyListeners();
+    }
   }
 
   Future<void> clearSearchHistory() async {
-    await searchRepository?.clearSearchHistory(profileId: profileId);
+    if (searchRepository != null) {
+      await searchRepository!.clearSearchHistory(profileId: profileId);
+    } else {
+      _searchHistory = const [];
+      notifyListeners();
+    }
   }
 
   @override
