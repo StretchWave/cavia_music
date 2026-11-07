@@ -46,6 +46,13 @@ abstract class AudioEngine {
   /// Change volume [0.0 - 1.0].
   Future<void> setVolume(double volume);
 
+  /// Current playback speed [0.25 - 4.0].
+  double get speed;
+
+  /// Change playback speed [0.25 - 4.0]. A real rate change of the audio
+  /// pipeline (no pitch fabrication): just_audio resamples the audio clock.
+  Future<void> setSpeed(double speed);
+
   /// Stop audio and release pipeline buffers.
   Future<void> stop();
 

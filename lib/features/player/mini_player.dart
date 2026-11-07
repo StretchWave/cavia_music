@@ -20,6 +20,9 @@ class MiniPlayer extends StatelessWidget {
       listenable: playback,
       builder: (context, _) {
         final song = playback.currentSong;
+        // The scaffold hides this widget entirely without a song; this branch
+        // keeps the widget safe if it is ever embedded directly.
+        if (song == null) return const SizedBox.shrink();
 
         return GlassContainer(
           radius: CaviaGlass.radiusMedium,

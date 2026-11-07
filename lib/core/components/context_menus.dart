@@ -87,7 +87,7 @@ class TrackContextMenu {
                 label: 'Play Next',
                 onTap: () {
                   Navigator.pop(ctx);
-                  playback.addToQueue(song);
+                  playback.playNext(song);
                   CaviaToast.show(context, 'Playing next in queue');
                 },
               ),

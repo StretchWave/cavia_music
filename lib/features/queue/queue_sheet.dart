@@ -46,56 +46,86 @@ class QueueSheet extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              // Currently Playing Section
-              Text(
-                'NOW PLAYING',
-                style: CaviaTypography.sectionLabel.copyWith(fontSize: 11),
-              ),
-              const SizedBox(height: 8),
-              GlassContainer(
-                radius: CaviaGlass.radiusMedium,
-                surfaceColor: CaviaColors.vermilion.withValues(alpha: 0.12),
-                borderColor: CaviaColors.vermilionBright.withValues(alpha: 0.5),
-                glow: true,
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    ArtworkView(
-                      imageAsset: current.artworkAsset,
-                      width: 48,
-                      height: 48,
-                      radius: 10,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            current.title,
-                            style: CaviaTypography.songTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            current.artist,
-                            style: CaviaTypography.artistSubtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.graphic_eq_rounded,
-                      color: CaviaColors.vermilionBright,
-                      size: 22,
-                    ),
-                  ],
+              // Currently Playing Section (hidden honestly when nothing plays)
+              if (current == null) ...[
+                Text(
+                  'NOTHING PLAYING',
+                  style: CaviaTypography.sectionLabel.copyWith(fontSize: 11),
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 8),
+                GlassContainer(
+                  radius: CaviaGlass.radiusMedium,
+                  surfaceColor: CaviaColors.overlaySheet,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.music_note_outlined,
+                        color: CaviaColors.textSilver,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          'Nothing is queued. Add songs to start.',
+                          style: CaviaTypography.artistSubtitle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ] else ...[
+                Text(
+                  'NOW PLAYING',
+                  style: CaviaTypography.sectionLabel.copyWith(fontSize: 11),
+                ),
+                const SizedBox(height: 8),
+                GlassContainer(
+                  radius: CaviaGlass.radiusMedium,
+                  surfaceColor: CaviaColors.vermilion.withValues(alpha: 0.12),
+                  borderColor: CaviaColors.vermilionBright.withValues(alpha: 0.5),
+                  glow: true,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      ArtworkView(
+                        imageAsset: current.artworkAsset,
+                        width: 48,
+                        height: 48,
+                        radius: 10,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              current.title,
+                              style: CaviaTypography.songTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              current.artist,
+                              style: CaviaTypography.artistSubtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.graphic_eq_rounded,
+                        color: CaviaColors.vermilionBright,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // Up Next Header & Clear Action
               Row(
@@ -125,7 +155,7 @@ class QueueSheet extends StatelessWidget {
                   onReorderItem: (oldIdx, newIdx) => playback.reorderQueue(oldIdx, newIdx),
                   itemBuilder: (context, index) {
                     final song = queue[index];
-                    final isCurrent = song.id == current.id;
+                    final isCurrent = song.id == current?.id;
 
                     return ListTile(
                       key: ValueKey(song.id),

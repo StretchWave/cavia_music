@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'package:url_launcher/url_launcher.dart';
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
 import '../domain/models/track.dart';
@@ -7,19 +5,10 @@ import '../playback/playback_source.dart';
 import '../playback/playback_failure.dart';
 import 'music_provider.dart';
 
-/// Provider implementing YouTube Music metadata and search while adhering strictly
-/// to YouTube's documented API and Terms of Service.
-///
-/// SPECIFICATION RULES:
-/// - Do not extract direct media URLs.
-/// - Do not scrape YouTube Music sessions or private endpoints.
-/// - Do not bypass content restrictions.
-/// - Do not separate audio from video.
-/// - Do not implement custom background audio through YouTube API content.
-/// - Do not offer offline caching of YouTube audiovisual content.
-/// - Preserve official player behavior and required attribution.
-/// - If chosen, use an allowed official player or external-app flow.
-/// - If audio-only playback is attempted, expose limitation: 'Playback isn't supported for this source.'
+/// Provider that models YouTube Music's *official* catalog surface, which
+/// Cavia cannot legally search without an API key. Search therefore reports
+/// honest unavailability instead of placeholder results; playback routes to
+/// the official YouTube player (never a scraped audio stream).
 class YouTubeMusicProvider implements MusicProvider {
   final String? apiKey;
 
@@ -29,12 +18,12 @@ class YouTubeMusicProvider implements MusicProvider {
   String get id => 'youtube';
 
   @override
-  String get displayName => 'YouTube Music';
+  String get displayName => 'YouTube Music (official player)';
 
   @override
   ProviderCapabilities get capabilities => const ProviderCapabilities(
-        searchSupport: true,
-        metadataSupport: true,
+        searchSupport: false, // No official API key in this build
+        metadataSupport: false,
         playbackSupport: false, // Direct audio-only playback is unsupported by policy
         backgroundPlaybackSupport: false, // Custom background audio is forbidden by YouTube TOS
         seekingSupport: true, // Official player supports seeking
@@ -58,71 +47,29 @@ class YouTubeMusicProvider implements MusicProvider {
       return const Result.failure(ValidationError('Search operation cancelled'));
     }
 
-    if (query.trim().isEmpty) {
-      return const Result.success([]);
-    }
-
-    final sampleResults = [
-      SearchResultItem(
-        id: 'yt_${query.hashCode}_1',
-        title: '$query (Official Audio)',
-        subtitle: 'YouTube Music • Official Artist Channel',
-        artworkUrl: 'https://img.youtube.com/vi/sample/hqdefault.jpg',
-        category: SearchFilterCategory.songs,
-        providerId: id,
-        sourceAttribution: 'YouTube Music',
-        duration: const Duration(minutes: 3, seconds: 45),
-        trackData: Track(
-          id: 'yt_${query.hashCode}_1',
-          providerId: 'youtube',
-          providerTrackId: 'dQw4w9WgXcQ',
-          title: '$query (Official Audio)',
-          artist: 'Verified YouTube Artist',
-          album: 'Single',
-          duration: const Duration(minutes: 3, seconds: 45),
-          artworkAsset: 'assets/images/cover_afterglow.jpg',
-          sourceAttribution: 'YouTube Music',
-          dateAdded: DateTime.now(),
-        ),
-      ),
-    ];
-
-    return Result.success(sampleResults);
+    return const Result.failure(ValidationError(
+      'YouTube Music catalog search is unavailable in this build. '
+      'Streams are resolved through the YouTube Music client instead.',
+    ));
   }
 
   @override
   Future<Result<Track, AppError>> resolveTrackMetadata(String providerTrackId) async {
-    return Result.success(Track(
-      id: 'yt_$providerTrackId',
-      providerId: 'youtube',
-      providerTrackId: providerTrackId,
-      title: 'YouTube Music Track',
-      artist: 'Official Artist',
-      album: 'YouTube Release',
-      duration: const Duration(minutes: 3, seconds: 30),
-      artworkAsset: 'assets/images/cover_afterglow.jpg',
-      sourceAttribution: 'YouTube Music',
-      dateAdded: DateTime.now(),
+    return const Result.failure(NotFoundError(
+      'YouTube Music metadata lookup is unavailable in this build without '
+      'an official API key.',
     ));
   }
 
   @override
   Future<Result<PlaybackSource, PlaybackFailure>> resolvePlaybackSource(String providerTrackId) async {
-    // Official policy: Cavia's custom audio-only engine cannot stream YouTube content directly.
+    // Official policy: Cavia's custom audio-only engine cannot stream YouTube
+    // content directly; playback hands off to the official player.
     final officialUrl = Uri.parse('https://www.youtube.com/watch?v=$providerTrackId');
     return Result.success(PlaybackSource.officialPlayerOnly(
-      trackId: 'yt_$providerTrackId',
+      trackId: providerTrackId,
       providerId: id,
       officialUrl: officialUrl,
     ));
-  }
-
-  /// Launch official YouTube player via external app or browser.
-  Future<bool> launchOfficialPlayer(String providerTrackId) async {
-    final url = Uri.parse('https://www.youtube.com/watch?v=$providerTrackId');
-    if (await canLaunchUrl(url)) {
-      return await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
-    return false;
   }
 }

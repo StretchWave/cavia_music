@@ -78,7 +78,19 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _albumArtistMeta = const VerificationMeta(
+    'albumArtist',
+  );
+  @override
+  late final GeneratedColumn<String> albumArtist = GeneratedColumn<String>(
+    'album_artist',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _durationMsMeta = const VerificationMeta(
     'durationMs',
@@ -125,6 +137,81 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
       'CHECK ("explicit" IN (0, 1))',
     ),
     defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _trackNumberMeta = const VerificationMeta(
+    'trackNumber',
+  );
+  @override
+  late final GeneratedColumn<int> trackNumber = GeneratedColumn<int>(
+    'track_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _discNumberMeta = const VerificationMeta(
+    'discNumber',
+  );
+  @override
+  late final GeneratedColumn<int> discNumber = GeneratedColumn<int>(
+    'disc_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _releaseYearMeta = const VerificationMeta(
+    'releaseYear',
+  );
+  @override
+  late final GeneratedColumn<int> releaseYear = GeneratedColumn<int>(
+    'release_year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _genreMeta = const VerificationMeta('genre');
+  @override
+  late final GeneratedColumn<String> genre = GeneratedColumn<String>(
+    'genre',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fileFormatMeta = const VerificationMeta(
+    'fileFormat',
+  );
+  @override
+  late final GeneratedColumn<String> fileFormat = GeneratedColumn<String>(
+    'file_format',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fileSizeBytesMeta = const VerificationMeta(
+    'fileSizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> fileSizeBytes = GeneratedColumn<int>(
+    'file_size_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _availabilityStateMeta = const VerificationMeta(
     'availabilityState',
@@ -232,10 +319,18 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
     artist,
     artistsJson,
     album,
+    albumArtist,
     durationMs,
     artworkUri,
     isrc,
     explicit,
+    trackNumber,
+    discNumber,
+    releaseYear,
+    genre,
+    filePath,
+    fileFormat,
+    fileSizeBytes,
     availabilityState,
     sourceAttribution,
     dateAdded,
@@ -307,8 +402,15 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
         _albumMeta,
         album.isAcceptableOrUnknown(data['album']!, _albumMeta),
       );
-    } else if (isInserting) {
-      context.missing(_albumMeta);
+    }
+    if (data.containsKey('album_artist')) {
+      context.handle(
+        _albumArtistMeta,
+        albumArtist.isAcceptableOrUnknown(
+          data['album_artist']!,
+          _albumArtistMeta,
+        ),
+      );
     }
     if (data.containsKey('duration_ms')) {
       context.handle(
@@ -336,6 +438,57 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
       context.handle(
         _explicitMeta,
         explicit.isAcceptableOrUnknown(data['explicit']!, _explicitMeta),
+      );
+    }
+    if (data.containsKey('track_number')) {
+      context.handle(
+        _trackNumberMeta,
+        trackNumber.isAcceptableOrUnknown(
+          data['track_number']!,
+          _trackNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('disc_number')) {
+      context.handle(
+        _discNumberMeta,
+        discNumber.isAcceptableOrUnknown(data['disc_number']!, _discNumberMeta),
+      );
+    }
+    if (data.containsKey('release_year')) {
+      context.handle(
+        _releaseYearMeta,
+        releaseYear.isAcceptableOrUnknown(
+          data['release_year']!,
+          _releaseYearMeta,
+        ),
+      );
+    }
+    if (data.containsKey('genre')) {
+      context.handle(
+        _genreMeta,
+        genre.isAcceptableOrUnknown(data['genre']!, _genreMeta),
+      );
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    }
+    if (data.containsKey('file_format')) {
+      context.handle(
+        _fileFormatMeta,
+        fileFormat.isAcceptableOrUnknown(data['file_format']!, _fileFormatMeta),
+      );
+    }
+    if (data.containsKey('file_size_bytes')) {
+      context.handle(
+        _fileSizeBytesMeta,
+        fileSizeBytes.isAcceptableOrUnknown(
+          data['file_size_bytes']!,
+          _fileSizeBytesMeta,
+        ),
       );
     }
     if (data.containsKey('availability_state')) {
@@ -437,6 +590,10 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
         DriftSqlType.string,
         data['${effectivePrefix}album'],
       )!,
+      albumArtist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album_artist'],
+      ),
       durationMs: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}duration_ms'],
@@ -453,6 +610,34 @@ class $DbTracksTable extends DbTracks with TableInfo<$DbTracksTable, DbTrack> {
         DriftSqlType.bool,
         data['${effectivePrefix}explicit'],
       )!,
+      trackNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}track_number'],
+      ),
+      discNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}disc_number'],
+      ),
+      releaseYear: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}release_year'],
+      ),
+      genre: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}genre'],
+      ),
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      ),
+      fileFormat: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_format'],
+      ),
+      fileSizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}file_size_bytes'],
+      ),
       availabilityState: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}availability_state'],
@@ -502,10 +687,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
   final String artist;
   final String artistsJson;
   final String album;
+  final String? albumArtist;
   final int durationMs;
   final String artworkUri;
   final String? isrc;
   final bool explicit;
+  final int? trackNumber;
+  final int? discNumber;
+  final int? releaseYear;
+  final String? genre;
+  final String? filePath;
+  final String? fileFormat;
+  final int? fileSizeBytes;
   final String availabilityState;
   final String? sourceAttribution;
   final DateTime dateAdded;
@@ -522,10 +715,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     required this.artist,
     required this.artistsJson,
     required this.album,
+    this.albumArtist,
     required this.durationMs,
     required this.artworkUri,
     this.isrc,
     required this.explicit,
+    this.trackNumber,
+    this.discNumber,
+    this.releaseYear,
+    this.genre,
+    this.filePath,
+    this.fileFormat,
+    this.fileSizeBytes,
     required this.availabilityState,
     this.sourceAttribution,
     required this.dateAdded,
@@ -545,12 +746,36 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     map['artist'] = Variable<String>(artist);
     map['artists_json'] = Variable<String>(artistsJson);
     map['album'] = Variable<String>(album);
+    if (!nullToAbsent || albumArtist != null) {
+      map['album_artist'] = Variable<String>(albumArtist);
+    }
     map['duration_ms'] = Variable<int>(durationMs);
     map['artwork_uri'] = Variable<String>(artworkUri);
     if (!nullToAbsent || isrc != null) {
       map['isrc'] = Variable<String>(isrc);
     }
     map['explicit'] = Variable<bool>(explicit);
+    if (!nullToAbsent || trackNumber != null) {
+      map['track_number'] = Variable<int>(trackNumber);
+    }
+    if (!nullToAbsent || discNumber != null) {
+      map['disc_number'] = Variable<int>(discNumber);
+    }
+    if (!nullToAbsent || releaseYear != null) {
+      map['release_year'] = Variable<int>(releaseYear);
+    }
+    if (!nullToAbsent || genre != null) {
+      map['genre'] = Variable<String>(genre);
+    }
+    if (!nullToAbsent || filePath != null) {
+      map['file_path'] = Variable<String>(filePath);
+    }
+    if (!nullToAbsent || fileFormat != null) {
+      map['file_format'] = Variable<String>(fileFormat);
+    }
+    if (!nullToAbsent || fileSizeBytes != null) {
+      map['file_size_bytes'] = Variable<int>(fileSizeBytes);
+    }
     map['availability_state'] = Variable<String>(availabilityState);
     if (!nullToAbsent || sourceAttribution != null) {
       map['source_attribution'] = Variable<String>(sourceAttribution);
@@ -577,10 +802,34 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
       artist: Value(artist),
       artistsJson: Value(artistsJson),
       album: Value(album),
+      albumArtist: albumArtist == null && nullToAbsent
+          ? const Value.absent()
+          : Value(albumArtist),
       durationMs: Value(durationMs),
       artworkUri: Value(artworkUri),
       isrc: isrc == null && nullToAbsent ? const Value.absent() : Value(isrc),
       explicit: Value(explicit),
+      trackNumber: trackNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(trackNumber),
+      discNumber: discNumber == null && nullToAbsent
+          ? const Value.absent()
+          : Value(discNumber),
+      releaseYear: releaseYear == null && nullToAbsent
+          ? const Value.absent()
+          : Value(releaseYear),
+      genre: genre == null && nullToAbsent
+          ? const Value.absent()
+          : Value(genre),
+      filePath: filePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(filePath),
+      fileFormat: fileFormat == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fileFormat),
+      fileSizeBytes: fileSizeBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(fileSizeBytes),
       availabilityState: Value(availabilityState),
       sourceAttribution: sourceAttribution == null && nullToAbsent
           ? const Value.absent()
@@ -611,10 +860,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
       artist: serializer.fromJson<String>(json['artist']),
       artistsJson: serializer.fromJson<String>(json['artistsJson']),
       album: serializer.fromJson<String>(json['album']),
+      albumArtist: serializer.fromJson<String?>(json['albumArtist']),
       durationMs: serializer.fromJson<int>(json['durationMs']),
       artworkUri: serializer.fromJson<String>(json['artworkUri']),
       isrc: serializer.fromJson<String?>(json['isrc']),
       explicit: serializer.fromJson<bool>(json['explicit']),
+      trackNumber: serializer.fromJson<int?>(json['trackNumber']),
+      discNumber: serializer.fromJson<int?>(json['discNumber']),
+      releaseYear: serializer.fromJson<int?>(json['releaseYear']),
+      genre: serializer.fromJson<String?>(json['genre']),
+      filePath: serializer.fromJson<String?>(json['filePath']),
+      fileFormat: serializer.fromJson<String?>(json['fileFormat']),
+      fileSizeBytes: serializer.fromJson<int?>(json['fileSizeBytes']),
       availabilityState: serializer.fromJson<String>(json['availabilityState']),
       sourceAttribution: serializer.fromJson<String?>(
         json['sourceAttribution'],
@@ -638,10 +895,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
       'artist': serializer.toJson<String>(artist),
       'artistsJson': serializer.toJson<String>(artistsJson),
       'album': serializer.toJson<String>(album),
+      'albumArtist': serializer.toJson<String?>(albumArtist),
       'durationMs': serializer.toJson<int>(durationMs),
       'artworkUri': serializer.toJson<String>(artworkUri),
       'isrc': serializer.toJson<String?>(isrc),
       'explicit': serializer.toJson<bool>(explicit),
+      'trackNumber': serializer.toJson<int?>(trackNumber),
+      'discNumber': serializer.toJson<int?>(discNumber),
+      'releaseYear': serializer.toJson<int?>(releaseYear),
+      'genre': serializer.toJson<String?>(genre),
+      'filePath': serializer.toJson<String?>(filePath),
+      'fileFormat': serializer.toJson<String?>(fileFormat),
+      'fileSizeBytes': serializer.toJson<int?>(fileSizeBytes),
       'availabilityState': serializer.toJson<String>(availabilityState),
       'sourceAttribution': serializer.toJson<String?>(sourceAttribution),
       'dateAdded': serializer.toJson<DateTime>(dateAdded),
@@ -661,10 +926,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     String? artist,
     String? artistsJson,
     String? album,
+    Value<String?> albumArtist = const Value.absent(),
     int? durationMs,
     String? artworkUri,
     Value<String?> isrc = const Value.absent(),
     bool? explicit,
+    Value<int?> trackNumber = const Value.absent(),
+    Value<int?> discNumber = const Value.absent(),
+    Value<int?> releaseYear = const Value.absent(),
+    Value<String?> genre = const Value.absent(),
+    Value<String?> filePath = const Value.absent(),
+    Value<String?> fileFormat = const Value.absent(),
+    Value<int?> fileSizeBytes = const Value.absent(),
     String? availabilityState,
     Value<String?> sourceAttribution = const Value.absent(),
     DateTime? dateAdded,
@@ -681,10 +954,20 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     artist: artist ?? this.artist,
     artistsJson: artistsJson ?? this.artistsJson,
     album: album ?? this.album,
+    albumArtist: albumArtist.present ? albumArtist.value : this.albumArtist,
     durationMs: durationMs ?? this.durationMs,
     artworkUri: artworkUri ?? this.artworkUri,
     isrc: isrc.present ? isrc.value : this.isrc,
     explicit: explicit ?? this.explicit,
+    trackNumber: trackNumber.present ? trackNumber.value : this.trackNumber,
+    discNumber: discNumber.present ? discNumber.value : this.discNumber,
+    releaseYear: releaseYear.present ? releaseYear.value : this.releaseYear,
+    genre: genre.present ? genre.value : this.genre,
+    filePath: filePath.present ? filePath.value : this.filePath,
+    fileFormat: fileFormat.present ? fileFormat.value : this.fileFormat,
+    fileSizeBytes: fileSizeBytes.present
+        ? fileSizeBytes.value
+        : this.fileSizeBytes,
     availabilityState: availabilityState ?? this.availabilityState,
     sourceAttribution: sourceAttribution.present
         ? sourceAttribution.value
@@ -713,6 +996,9 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
           ? data.artistsJson.value
           : this.artistsJson,
       album: data.album.present ? data.album.value : this.album,
+      albumArtist: data.albumArtist.present
+          ? data.albumArtist.value
+          : this.albumArtist,
       durationMs: data.durationMs.present
           ? data.durationMs.value
           : this.durationMs,
@@ -721,6 +1007,23 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
           : this.artworkUri,
       isrc: data.isrc.present ? data.isrc.value : this.isrc,
       explicit: data.explicit.present ? data.explicit.value : this.explicit,
+      trackNumber: data.trackNumber.present
+          ? data.trackNumber.value
+          : this.trackNumber,
+      discNumber: data.discNumber.present
+          ? data.discNumber.value
+          : this.discNumber,
+      releaseYear: data.releaseYear.present
+          ? data.releaseYear.value
+          : this.releaseYear,
+      genre: data.genre.present ? data.genre.value : this.genre,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      fileFormat: data.fileFormat.present
+          ? data.fileFormat.value
+          : this.fileFormat,
+      fileSizeBytes: data.fileSizeBytes.present
+          ? data.fileSizeBytes.value
+          : this.fileSizeBytes,
       availabilityState: data.availabilityState.present
           ? data.availabilityState.value
           : this.availabilityState,
@@ -752,10 +1055,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
           ..write('artist: $artist, ')
           ..write('artistsJson: $artistsJson, ')
           ..write('album: $album, ')
+          ..write('albumArtist: $albumArtist, ')
           ..write('durationMs: $durationMs, ')
           ..write('artworkUri: $artworkUri, ')
           ..write('isrc: $isrc, ')
           ..write('explicit: $explicit, ')
+          ..write('trackNumber: $trackNumber, ')
+          ..write('discNumber: $discNumber, ')
+          ..write('releaseYear: $releaseYear, ')
+          ..write('genre: $genre, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileFormat: $fileFormat, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
           ..write('availabilityState: $availabilityState, ')
           ..write('sourceAttribution: $sourceAttribution, ')
           ..write('dateAdded: $dateAdded, ')
@@ -769,7 +1080,7 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     providerId,
     providerTrackId,
@@ -777,10 +1088,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     artist,
     artistsJson,
     album,
+    albumArtist,
     durationMs,
     artworkUri,
     isrc,
     explicit,
+    trackNumber,
+    discNumber,
+    releaseYear,
+    genre,
+    filePath,
+    fileFormat,
+    fileSizeBytes,
     availabilityState,
     sourceAttribution,
     dateAdded,
@@ -789,7 +1108,7 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
     playCount,
     lastPlayedAt,
     lyricsJson,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -801,10 +1120,18 @@ class DbTrack extends DataClass implements Insertable<DbTrack> {
           other.artist == this.artist &&
           other.artistsJson == this.artistsJson &&
           other.album == this.album &&
+          other.albumArtist == this.albumArtist &&
           other.durationMs == this.durationMs &&
           other.artworkUri == this.artworkUri &&
           other.isrc == this.isrc &&
           other.explicit == this.explicit &&
+          other.trackNumber == this.trackNumber &&
+          other.discNumber == this.discNumber &&
+          other.releaseYear == this.releaseYear &&
+          other.genre == this.genre &&
+          other.filePath == this.filePath &&
+          other.fileFormat == this.fileFormat &&
+          other.fileSizeBytes == this.fileSizeBytes &&
           other.availabilityState == this.availabilityState &&
           other.sourceAttribution == this.sourceAttribution &&
           other.dateAdded == this.dateAdded &&
@@ -823,10 +1150,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
   final Value<String> artist;
   final Value<String> artistsJson;
   final Value<String> album;
+  final Value<String?> albumArtist;
   final Value<int> durationMs;
   final Value<String> artworkUri;
   final Value<String?> isrc;
   final Value<bool> explicit;
+  final Value<int?> trackNumber;
+  final Value<int?> discNumber;
+  final Value<int?> releaseYear;
+  final Value<String?> genre;
+  final Value<String?> filePath;
+  final Value<String?> fileFormat;
+  final Value<int?> fileSizeBytes;
   final Value<String> availabilityState;
   final Value<String?> sourceAttribution;
   final Value<DateTime> dateAdded;
@@ -844,10 +1179,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     this.artist = const Value.absent(),
     this.artistsJson = const Value.absent(),
     this.album = const Value.absent(),
+    this.albumArtist = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.artworkUri = const Value.absent(),
     this.isrc = const Value.absent(),
     this.explicit = const Value.absent(),
+    this.trackNumber = const Value.absent(),
+    this.discNumber = const Value.absent(),
+    this.releaseYear = const Value.absent(),
+    this.genre = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.fileFormat = const Value.absent(),
+    this.fileSizeBytes = const Value.absent(),
     this.availabilityState = const Value.absent(),
     this.sourceAttribution = const Value.absent(),
     this.dateAdded = const Value.absent(),
@@ -865,11 +1208,19 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     required String title,
     required String artist,
     this.artistsJson = const Value.absent(),
-    required String album,
+    this.album = const Value.absent(),
+    this.albumArtist = const Value.absent(),
     required int durationMs,
     required String artworkUri,
     this.isrc = const Value.absent(),
     this.explicit = const Value.absent(),
+    this.trackNumber = const Value.absent(),
+    this.discNumber = const Value.absent(),
+    this.releaseYear = const Value.absent(),
+    this.genre = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.fileFormat = const Value.absent(),
+    this.fileSizeBytes = const Value.absent(),
     this.availabilityState = const Value.absent(),
     this.sourceAttribution = const Value.absent(),
     required DateTime dateAdded,
@@ -882,7 +1233,6 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
   }) : id = Value(id),
        title = Value(title),
        artist = Value(artist),
-       album = Value(album),
        durationMs = Value(durationMs),
        artworkUri = Value(artworkUri),
        dateAdded = Value(dateAdded);
@@ -894,10 +1244,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     Expression<String>? artist,
     Expression<String>? artistsJson,
     Expression<String>? album,
+    Expression<String>? albumArtist,
     Expression<int>? durationMs,
     Expression<String>? artworkUri,
     Expression<String>? isrc,
     Expression<bool>? explicit,
+    Expression<int>? trackNumber,
+    Expression<int>? discNumber,
+    Expression<int>? releaseYear,
+    Expression<String>? genre,
+    Expression<String>? filePath,
+    Expression<String>? fileFormat,
+    Expression<int>? fileSizeBytes,
     Expression<String>? availabilityState,
     Expression<String>? sourceAttribution,
     Expression<DateTime>? dateAdded,
@@ -916,10 +1274,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
       if (artist != null) 'artist': artist,
       if (artistsJson != null) 'artists_json': artistsJson,
       if (album != null) 'album': album,
+      if (albumArtist != null) 'album_artist': albumArtist,
       if (durationMs != null) 'duration_ms': durationMs,
       if (artworkUri != null) 'artwork_uri': artworkUri,
       if (isrc != null) 'isrc': isrc,
       if (explicit != null) 'explicit': explicit,
+      if (trackNumber != null) 'track_number': trackNumber,
+      if (discNumber != null) 'disc_number': discNumber,
+      if (releaseYear != null) 'release_year': releaseYear,
+      if (genre != null) 'genre': genre,
+      if (filePath != null) 'file_path': filePath,
+      if (fileFormat != null) 'file_format': fileFormat,
+      if (fileSizeBytes != null) 'file_size_bytes': fileSizeBytes,
       if (availabilityState != null) 'availability_state': availabilityState,
       if (sourceAttribution != null) 'source_attribution': sourceAttribution,
       if (dateAdded != null) 'date_added': dateAdded,
@@ -940,10 +1306,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     Value<String>? artist,
     Value<String>? artistsJson,
     Value<String>? album,
+    Value<String?>? albumArtist,
     Value<int>? durationMs,
     Value<String>? artworkUri,
     Value<String?>? isrc,
     Value<bool>? explicit,
+    Value<int?>? trackNumber,
+    Value<int?>? discNumber,
+    Value<int?>? releaseYear,
+    Value<String?>? genre,
+    Value<String?>? filePath,
+    Value<String?>? fileFormat,
+    Value<int?>? fileSizeBytes,
     Value<String>? availabilityState,
     Value<String?>? sourceAttribution,
     Value<DateTime>? dateAdded,
@@ -962,10 +1336,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
       artist: artist ?? this.artist,
       artistsJson: artistsJson ?? this.artistsJson,
       album: album ?? this.album,
+      albumArtist: albumArtist ?? this.albumArtist,
       durationMs: durationMs ?? this.durationMs,
       artworkUri: artworkUri ?? this.artworkUri,
       isrc: isrc ?? this.isrc,
       explicit: explicit ?? this.explicit,
+      trackNumber: trackNumber ?? this.trackNumber,
+      discNumber: discNumber ?? this.discNumber,
+      releaseYear: releaseYear ?? this.releaseYear,
+      genre: genre ?? this.genre,
+      filePath: filePath ?? this.filePath,
+      fileFormat: fileFormat ?? this.fileFormat,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       availabilityState: availabilityState ?? this.availabilityState,
       sourceAttribution: sourceAttribution ?? this.sourceAttribution,
       dateAdded: dateAdded ?? this.dateAdded,
@@ -1002,6 +1384,9 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     if (album.present) {
       map['album'] = Variable<String>(album.value);
     }
+    if (albumArtist.present) {
+      map['album_artist'] = Variable<String>(albumArtist.value);
+    }
     if (durationMs.present) {
       map['duration_ms'] = Variable<int>(durationMs.value);
     }
@@ -1013,6 +1398,27 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
     }
     if (explicit.present) {
       map['explicit'] = Variable<bool>(explicit.value);
+    }
+    if (trackNumber.present) {
+      map['track_number'] = Variable<int>(trackNumber.value);
+    }
+    if (discNumber.present) {
+      map['disc_number'] = Variable<int>(discNumber.value);
+    }
+    if (releaseYear.present) {
+      map['release_year'] = Variable<int>(releaseYear.value);
+    }
+    if (genre.present) {
+      map['genre'] = Variable<String>(genre.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (fileFormat.present) {
+      map['file_format'] = Variable<String>(fileFormat.value);
+    }
+    if (fileSizeBytes.present) {
+      map['file_size_bytes'] = Variable<int>(fileSizeBytes.value);
     }
     if (availabilityState.present) {
       map['availability_state'] = Variable<String>(availabilityState.value);
@@ -1054,10 +1460,18 @@ class DbTracksCompanion extends UpdateCompanion<DbTrack> {
           ..write('artist: $artist, ')
           ..write('artistsJson: $artistsJson, ')
           ..write('album: $album, ')
+          ..write('albumArtist: $albumArtist, ')
           ..write('durationMs: $durationMs, ')
           ..write('artworkUri: $artworkUri, ')
           ..write('isrc: $isrc, ')
           ..write('explicit: $explicit, ')
+          ..write('trackNumber: $trackNumber, ')
+          ..write('discNumber: $discNumber, ')
+          ..write('releaseYear: $releaseYear, ')
+          ..write('genre: $genre, ')
+          ..write('filePath: $filePath, ')
+          ..write('fileFormat: $fileFormat, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
           ..write('availabilityState: $availabilityState, ')
           ..write('sourceAttribution: $sourceAttribution, ')
           ..write('dateAdded: $dateAdded, ')
@@ -1183,6 +1597,40 @@ class $DbPlaylistsTable extends DbPlaylists
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _sourceProviderMeta = const VerificationMeta(
+    'sourceProvider',
+  );
+  @override
+  late final GeneratedColumn<String> sourceProvider = GeneratedColumn<String>(
+    'source_provider',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourcePlaylistIdMeta = const VerificationMeta(
+    'sourcePlaylistId',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePlaylistId = GeneratedColumn<String>(
+    'source_playlist_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1194,6 +1642,9 @@ class $DbPlaylistsTable extends DbPlaylists
     updatedAt,
     isSystem,
     isDeleted,
+    revision,
+    sourceProvider,
+    sourcePlaylistId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1271,6 +1722,30 @@ class $DbPlaylistsTable extends DbPlaylists
         isDeleted.isAcceptableOrUnknown(data['is_deleted']!, _isDeletedMeta),
       );
     }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
+    if (data.containsKey('source_provider')) {
+      context.handle(
+        _sourceProviderMeta,
+        sourceProvider.isAcceptableOrUnknown(
+          data['source_provider']!,
+          _sourceProviderMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_playlist_id')) {
+      context.handle(
+        _sourcePlaylistIdMeta,
+        sourcePlaylistId.isAcceptableOrUnknown(
+          data['source_playlist_id']!,
+          _sourcePlaylistIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1316,6 +1791,18 @@ class $DbPlaylistsTable extends DbPlaylists
         DriftSqlType.bool,
         data['${effectivePrefix}is_deleted'],
       )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
+      sourceProvider: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_provider'],
+      ),
+      sourcePlaylistId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_playlist_id'],
+      ),
     );
   }
 
@@ -1335,6 +1822,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
   final DateTime updatedAt;
   final bool isSystem;
   final bool isDeleted;
+  final int revision;
+  final String? sourceProvider;
+  final String? sourcePlaylistId;
   const DbPlaylist({
     required this.id,
     required this.profileId,
@@ -1345,6 +1835,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
     required this.updatedAt,
     required this.isSystem,
     required this.isDeleted,
+    required this.revision,
+    this.sourceProvider,
+    this.sourcePlaylistId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1358,6 +1851,13 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['is_system'] = Variable<bool>(isSystem);
     map['is_deleted'] = Variable<bool>(isDeleted);
+    map['revision'] = Variable<int>(revision);
+    if (!nullToAbsent || sourceProvider != null) {
+      map['source_provider'] = Variable<String>(sourceProvider);
+    }
+    if (!nullToAbsent || sourcePlaylistId != null) {
+      map['source_playlist_id'] = Variable<String>(sourcePlaylistId);
+    }
     return map;
   }
 
@@ -1372,6 +1872,13 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
       updatedAt: Value(updatedAt),
       isSystem: Value(isSystem),
       isDeleted: Value(isDeleted),
+      revision: Value(revision),
+      sourceProvider: sourceProvider == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceProvider),
+      sourcePlaylistId: sourcePlaylistId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourcePlaylistId),
     );
   }
 
@@ -1390,6 +1897,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       isSystem: serializer.fromJson<bool>(json['isSystem']),
       isDeleted: serializer.fromJson<bool>(json['isDeleted']),
+      revision: serializer.fromJson<int>(json['revision']),
+      sourceProvider: serializer.fromJson<String?>(json['sourceProvider']),
+      sourcePlaylistId: serializer.fromJson<String?>(json['sourcePlaylistId']),
     );
   }
   @override
@@ -1405,6 +1915,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'isSystem': serializer.toJson<bool>(isSystem),
       'isDeleted': serializer.toJson<bool>(isDeleted),
+      'revision': serializer.toJson<int>(revision),
+      'sourceProvider': serializer.toJson<String?>(sourceProvider),
+      'sourcePlaylistId': serializer.toJson<String?>(sourcePlaylistId),
     };
   }
 
@@ -1418,6 +1931,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
     DateTime? updatedAt,
     bool? isSystem,
     bool? isDeleted,
+    int? revision,
+    Value<String?> sourceProvider = const Value.absent(),
+    Value<String?> sourcePlaylistId = const Value.absent(),
   }) => DbPlaylist(
     id: id ?? this.id,
     profileId: profileId ?? this.profileId,
@@ -1428,6 +1944,13 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
     updatedAt: updatedAt ?? this.updatedAt,
     isSystem: isSystem ?? this.isSystem,
     isDeleted: isDeleted ?? this.isDeleted,
+    revision: revision ?? this.revision,
+    sourceProvider: sourceProvider.present
+        ? sourceProvider.value
+        : this.sourceProvider,
+    sourcePlaylistId: sourcePlaylistId.present
+        ? sourcePlaylistId.value
+        : this.sourcePlaylistId,
   );
   DbPlaylist copyWithCompanion(DbPlaylistsCompanion data) {
     return DbPlaylist(
@@ -1444,6 +1967,13 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       isSystem: data.isSystem.present ? data.isSystem.value : this.isSystem,
       isDeleted: data.isDeleted.present ? data.isDeleted.value : this.isDeleted,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      sourceProvider: data.sourceProvider.present
+          ? data.sourceProvider.value
+          : this.sourceProvider,
+      sourcePlaylistId: data.sourcePlaylistId.present
+          ? data.sourcePlaylistId.value
+          : this.sourcePlaylistId,
     );
   }
 
@@ -1458,7 +1988,10 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('isSystem: $isSystem, ')
-          ..write('isDeleted: $isDeleted')
+          ..write('isDeleted: $isDeleted, ')
+          ..write('revision: $revision, ')
+          ..write('sourceProvider: $sourceProvider, ')
+          ..write('sourcePlaylistId: $sourcePlaylistId')
           ..write(')'))
         .toString();
   }
@@ -1474,6 +2007,9 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
     updatedAt,
     isSystem,
     isDeleted,
+    revision,
+    sourceProvider,
+    sourcePlaylistId,
   );
   @override
   bool operator ==(Object other) =>
@@ -1487,7 +2023,10 @@ class DbPlaylist extends DataClass implements Insertable<DbPlaylist> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.isSystem == this.isSystem &&
-          other.isDeleted == this.isDeleted);
+          other.isDeleted == this.isDeleted &&
+          other.revision == this.revision &&
+          other.sourceProvider == this.sourceProvider &&
+          other.sourcePlaylistId == this.sourcePlaylistId);
 }
 
 class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
@@ -1500,6 +2039,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
   final Value<DateTime> updatedAt;
   final Value<bool> isSystem;
   final Value<bool> isDeleted;
+  final Value<int> revision;
+  final Value<String?> sourceProvider;
+  final Value<String?> sourcePlaylistId;
   final Value<int> rowid;
   const DbPlaylistsCompanion({
     this.id = const Value.absent(),
@@ -1511,6 +2053,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
     this.updatedAt = const Value.absent(),
     this.isSystem = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.sourceProvider = const Value.absent(),
+    this.sourcePlaylistId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DbPlaylistsCompanion.insert({
@@ -1523,6 +2068,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
     required DateTime updatedAt,
     this.isSystem = const Value.absent(),
     this.isDeleted = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.sourceProvider = const Value.absent(),
+    this.sourcePlaylistId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -1539,6 +2087,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
     Expression<DateTime>? updatedAt,
     Expression<bool>? isSystem,
     Expression<bool>? isDeleted,
+    Expression<int>? revision,
+    Expression<String>? sourceProvider,
+    Expression<String>? sourcePlaylistId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1551,6 +2102,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
       if (updatedAt != null) 'updated_at': updatedAt,
       if (isSystem != null) 'is_system': isSystem,
       if (isDeleted != null) 'is_deleted': isDeleted,
+      if (revision != null) 'revision': revision,
+      if (sourceProvider != null) 'source_provider': sourceProvider,
+      if (sourcePlaylistId != null) 'source_playlist_id': sourcePlaylistId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1565,6 +2119,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
     Value<DateTime>? updatedAt,
     Value<bool>? isSystem,
     Value<bool>? isDeleted,
+    Value<int>? revision,
+    Value<String?>? sourceProvider,
+    Value<String?>? sourcePlaylistId,
     Value<int>? rowid,
   }) {
     return DbPlaylistsCompanion(
@@ -1577,6 +2134,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
       updatedAt: updatedAt ?? this.updatedAt,
       isSystem: isSystem ?? this.isSystem,
       isDeleted: isDeleted ?? this.isDeleted,
+      revision: revision ?? this.revision,
+      sourceProvider: sourceProvider ?? this.sourceProvider,
+      sourcePlaylistId: sourcePlaylistId ?? this.sourcePlaylistId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1611,6 +2171,15 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
     if (isDeleted.present) {
       map['is_deleted'] = Variable<bool>(isDeleted.value);
     }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
+    if (sourceProvider.present) {
+      map['source_provider'] = Variable<String>(sourceProvider.value);
+    }
+    if (sourcePlaylistId.present) {
+      map['source_playlist_id'] = Variable<String>(sourcePlaylistId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1629,6 +2198,9 @@ class DbPlaylistsCompanion extends UpdateCompanion<DbPlaylist> {
           ..write('updatedAt: $updatedAt, ')
           ..write('isSystem: $isSystem, ')
           ..write('isDeleted: $isDeleted, ')
+          ..write('revision: $revision, ')
+          ..write('sourceProvider: $sourceProvider, ')
+          ..write('sourcePlaylistId: $sourcePlaylistId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1700,6 +2272,18 @@ class $DbPlaylistEntriesTable extends DbPlaylistEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<int> revision = GeneratedColumn<int>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1707,6 +2291,7 @@ class $DbPlaylistEntriesTable extends DbPlaylistEntries
     trackId,
     position,
     dateAdded,
+    revision,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1757,6 +2342,12 @@ class $DbPlaylistEntriesTable extends DbPlaylistEntries
     } else if (isInserting) {
       context.missing(_dateAddedMeta);
     }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    }
     return context;
   }
 
@@ -1786,6 +2377,10 @@ class $DbPlaylistEntriesTable extends DbPlaylistEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}date_added'],
       )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}revision'],
+      )!,
     );
   }
 
@@ -1801,12 +2396,14 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
   final String trackId;
   final int position;
   final DateTime dateAdded;
+  final int revision;
   const DbPlaylistEntry({
     required this.id,
     required this.playlistId,
     required this.trackId,
     required this.position,
     required this.dateAdded,
+    required this.revision,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1816,6 +2413,7 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
     map['track_id'] = Variable<String>(trackId);
     map['position'] = Variable<int>(position);
     map['date_added'] = Variable<DateTime>(dateAdded);
+    map['revision'] = Variable<int>(revision);
     return map;
   }
 
@@ -1826,6 +2424,7 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
       trackId: Value(trackId),
       position: Value(position),
       dateAdded: Value(dateAdded),
+      revision: Value(revision),
     );
   }
 
@@ -1840,6 +2439,7 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
       trackId: serializer.fromJson<String>(json['trackId']),
       position: serializer.fromJson<int>(json['position']),
       dateAdded: serializer.fromJson<DateTime>(json['dateAdded']),
+      revision: serializer.fromJson<int>(json['revision']),
     );
   }
   @override
@@ -1851,6 +2451,7 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
       'trackId': serializer.toJson<String>(trackId),
       'position': serializer.toJson<int>(position),
       'dateAdded': serializer.toJson<DateTime>(dateAdded),
+      'revision': serializer.toJson<int>(revision),
     };
   }
 
@@ -1860,12 +2461,14 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
     String? trackId,
     int? position,
     DateTime? dateAdded,
+    int? revision,
   }) => DbPlaylistEntry(
     id: id ?? this.id,
     playlistId: playlistId ?? this.playlistId,
     trackId: trackId ?? this.trackId,
     position: position ?? this.position,
     dateAdded: dateAdded ?? this.dateAdded,
+    revision: revision ?? this.revision,
   );
   DbPlaylistEntry copyWithCompanion(DbPlaylistEntriesCompanion data) {
     return DbPlaylistEntry(
@@ -1876,6 +2479,7 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
       trackId: data.trackId.present ? data.trackId.value : this.trackId,
       position: data.position.present ? data.position.value : this.position,
       dateAdded: data.dateAdded.present ? data.dateAdded.value : this.dateAdded,
+      revision: data.revision.present ? data.revision.value : this.revision,
     );
   }
 
@@ -1886,13 +2490,15 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
           ..write('playlistId: $playlistId, ')
           ..write('trackId: $trackId, ')
           ..write('position: $position, ')
-          ..write('dateAdded: $dateAdded')
+          ..write('dateAdded: $dateAdded, ')
+          ..write('revision: $revision')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, playlistId, trackId, position, dateAdded);
+  int get hashCode =>
+      Object.hash(id, playlistId, trackId, position, dateAdded, revision);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1901,7 +2507,8 @@ class DbPlaylistEntry extends DataClass implements Insertable<DbPlaylistEntry> {
           other.playlistId == this.playlistId &&
           other.trackId == this.trackId &&
           other.position == this.position &&
-          other.dateAdded == this.dateAdded);
+          other.dateAdded == this.dateAdded &&
+          other.revision == this.revision);
 }
 
 class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
@@ -1910,6 +2517,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
   final Value<String> trackId;
   final Value<int> position;
   final Value<DateTime> dateAdded;
+  final Value<int> revision;
   final Value<int> rowid;
   const DbPlaylistEntriesCompanion({
     this.id = const Value.absent(),
@@ -1917,6 +2525,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
     this.trackId = const Value.absent(),
     this.position = const Value.absent(),
     this.dateAdded = const Value.absent(),
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DbPlaylistEntriesCompanion.insert({
@@ -1925,6 +2534,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
     required String trackId,
     required int position,
     required DateTime dateAdded,
+    this.revision = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        playlistId = Value(playlistId),
@@ -1937,6 +2547,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
     Expression<String>? trackId,
     Expression<int>? position,
     Expression<DateTime>? dateAdded,
+    Expression<int>? revision,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1945,6 +2556,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
       if (trackId != null) 'track_id': trackId,
       if (position != null) 'position': position,
       if (dateAdded != null) 'date_added': dateAdded,
+      if (revision != null) 'revision': revision,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1955,6 +2567,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
     Value<String>? trackId,
     Value<int>? position,
     Value<DateTime>? dateAdded,
+    Value<int>? revision,
     Value<int>? rowid,
   }) {
     return DbPlaylistEntriesCompanion(
@@ -1963,6 +2576,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
       trackId: trackId ?? this.trackId,
       position: position ?? this.position,
       dateAdded: dateAdded ?? this.dateAdded,
+      revision: revision ?? this.revision,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1985,6 +2599,9 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
     if (dateAdded.present) {
       map['date_added'] = Variable<DateTime>(dateAdded.value);
     }
+    if (revision.present) {
+      map['revision'] = Variable<int>(revision.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1999,6 +2616,7 @@ class DbPlaylistEntriesCompanion extends UpdateCompanion<DbPlaylistEntry> {
           ..write('trackId: $trackId, ')
           ..write('position: $position, ')
           ..write('dateAdded: $dateAdded, ')
+          ..write('revision: $revision, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2305,16 +2923,17 @@ class $DbAlbumsTable extends DbAlbums with TableInfo<$DbAlbumsTable, DbAlbum> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _yearMeta = const VerificationMeta('year');
   @override
   late final GeneratedColumn<int> year = GeneratedColumn<int>(
     'year',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _artworkUriMeta = const VerificationMeta(
     'artworkUri',
@@ -2325,7 +2944,8 @@ class $DbAlbumsTable extends DbAlbums with TableInfo<$DbAlbumsTable, DbAlbum> {
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _sourceAttributionMeta = const VerificationMeta(
     'sourceAttribution',
@@ -2394,24 +3014,18 @@ class $DbAlbumsTable extends DbAlbums with TableInfo<$DbAlbumsTable, DbAlbum> {
         _artistMeta,
         artist.isAcceptableOrUnknown(data['artist']!, _artistMeta),
       );
-    } else if (isInserting) {
-      context.missing(_artistMeta);
     }
     if (data.containsKey('year')) {
       context.handle(
         _yearMeta,
         year.isAcceptableOrUnknown(data['year']!, _yearMeta),
       );
-    } else if (isInserting) {
-      context.missing(_yearMeta);
     }
     if (data.containsKey('artwork_uri')) {
       context.handle(
         _artworkUriMeta,
         artworkUri.isAcceptableOrUnknown(data['artwork_uri']!, _artworkUriMeta),
       );
-    } else if (isInserting) {
-      context.missing(_artworkUriMeta);
     }
     if (data.containsKey('source_attribution')) {
       context.handle(
@@ -2452,7 +3066,7 @@ class $DbAlbumsTable extends DbAlbums with TableInfo<$DbAlbumsTable, DbAlbum> {
       year: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}year'],
-      )!,
+      ),
       artworkUri: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}artwork_uri'],
@@ -2478,7 +3092,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
   final String id;
   final String title;
   final String artist;
-  final int year;
+  final int? year;
   final String artworkUri;
   final String? sourceAttribution;
   final bool isSaved;
@@ -2486,7 +3100,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
     required this.id,
     required this.title,
     required this.artist,
-    required this.year,
+    this.year,
     required this.artworkUri,
     this.sourceAttribution,
     required this.isSaved,
@@ -2497,7 +3111,9 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['artist'] = Variable<String>(artist);
-    map['year'] = Variable<int>(year);
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
     map['artwork_uri'] = Variable<String>(artworkUri);
     if (!nullToAbsent || sourceAttribution != null) {
       map['source_attribution'] = Variable<String>(sourceAttribution);
@@ -2511,7 +3127,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
       id: Value(id),
       title: Value(title),
       artist: Value(artist),
-      year: Value(year),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
       artworkUri: Value(artworkUri),
       sourceAttribution: sourceAttribution == null && nullToAbsent
           ? const Value.absent()
@@ -2529,7 +3145,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       artist: serializer.fromJson<String>(json['artist']),
-      year: serializer.fromJson<int>(json['year']),
+      year: serializer.fromJson<int?>(json['year']),
       artworkUri: serializer.fromJson<String>(json['artworkUri']),
       sourceAttribution: serializer.fromJson<String?>(
         json['sourceAttribution'],
@@ -2544,7 +3160,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'artist': serializer.toJson<String>(artist),
-      'year': serializer.toJson<int>(year),
+      'year': serializer.toJson<int?>(year),
       'artworkUri': serializer.toJson<String>(artworkUri),
       'sourceAttribution': serializer.toJson<String?>(sourceAttribution),
       'isSaved': serializer.toJson<bool>(isSaved),
@@ -2555,7 +3171,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
     String? id,
     String? title,
     String? artist,
-    int? year,
+    Value<int?> year = const Value.absent(),
     String? artworkUri,
     Value<String?> sourceAttribution = const Value.absent(),
     bool? isSaved,
@@ -2563,7 +3179,7 @@ class DbAlbum extends DataClass implements Insertable<DbAlbum> {
     id: id ?? this.id,
     title: title ?? this.title,
     artist: artist ?? this.artist,
-    year: year ?? this.year,
+    year: year.present ? year.value : this.year,
     artworkUri: artworkUri ?? this.artworkUri,
     sourceAttribution: sourceAttribution.present
         ? sourceAttribution.value
@@ -2627,7 +3243,7 @@ class DbAlbumsCompanion extends UpdateCompanion<DbAlbum> {
   final Value<String> id;
   final Value<String> title;
   final Value<String> artist;
-  final Value<int> year;
+  final Value<int?> year;
   final Value<String> artworkUri;
   final Value<String?> sourceAttribution;
   final Value<bool> isSaved;
@@ -2645,17 +3261,14 @@ class DbAlbumsCompanion extends UpdateCompanion<DbAlbum> {
   DbAlbumsCompanion.insert({
     required String id,
     required String title,
-    required String artist,
-    required int year,
-    required String artworkUri,
+    this.artist = const Value.absent(),
+    this.year = const Value.absent(),
+    this.artworkUri = const Value.absent(),
     this.sourceAttribution = const Value.absent(),
     this.isSaved = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       title = Value(title),
-       artist = Value(artist),
-       year = Value(year),
-       artworkUri = Value(artworkUri);
+       title = Value(title);
   static Insertable<DbAlbum> custom({
     Expression<String>? id,
     Expression<String>? title,
@@ -2682,7 +3295,7 @@ class DbAlbumsCompanion extends UpdateCompanion<DbAlbum> {
     Value<String>? id,
     Value<String>? title,
     Value<String>? artist,
-    Value<int>? year,
+    Value<int?>? year,
     Value<String>? artworkUri,
     Value<String?>? sourceAttribution,
     Value<bool>? isSaved,
@@ -2779,7 +3392,8 @@ class $DbArtistsTable extends DbArtists
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
   );
   static const VerificationMeta _sourceAttributionMeta = const VerificationMeta(
     'sourceAttribution',
@@ -2849,8 +3463,6 @@ class $DbArtistsTable extends DbArtists
           _portraitUriMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_portraitUriMeta);
     }
     if (data.containsKey('source_attribution')) {
       context.handle(
@@ -3045,13 +3657,12 @@ class DbArtistsCompanion extends UpdateCompanion<DbArtist> {
   DbArtistsCompanion.insert({
     required String id,
     required String name,
-    required String portraitUri,
+    this.portraitUri = const Value.absent(),
     this.sourceAttribution = const Value.absent(),
     this.isFollowed = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
-       name = Value(name),
-       portraitUri = Value(portraitUri);
+       name = Value(name);
   static Insertable<DbArtist> custom({
     Expression<String>? id,
     Expression<String>? name,
@@ -3521,6 +4132,16 @@ class $DbQueueStateTable extends DbQueueState
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<double> speed = GeneratedColumn<double>(
+    'speed',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1.0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     profileId,
@@ -3529,6 +4150,7 @@ class $DbQueueStateTable extends DbQueueState
     isShuffle,
     positionMs,
     isPlaying,
+    speed,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3581,6 +4203,12 @@ class $DbQueueStateTable extends DbQueueState
         isPlaying.isAcceptableOrUnknown(data['is_playing']!, _isPlayingMeta),
       );
     }
+    if (data.containsKey('speed')) {
+      context.handle(
+        _speedMeta,
+        speed.isAcceptableOrUnknown(data['speed']!, _speedMeta),
+      );
+    }
     return context;
   }
 
@@ -3614,6 +4242,10 @@ class $DbQueueStateTable extends DbQueueState
         DriftSqlType.bool,
         data['${effectivePrefix}is_playing'],
       )!,
+      speed: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}speed'],
+      )!,
     );
   }
 
@@ -3631,6 +4263,7 @@ class DbQueueStateData extends DataClass
   final bool isShuffle;
   final int positionMs;
   final bool isPlaying;
+  final double speed;
   const DbQueueStateData({
     required this.profileId,
     required this.currentIndex,
@@ -3638,6 +4271,7 @@ class DbQueueStateData extends DataClass
     required this.isShuffle,
     required this.positionMs,
     required this.isPlaying,
+    required this.speed,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3648,6 +4282,7 @@ class DbQueueStateData extends DataClass
     map['is_shuffle'] = Variable<bool>(isShuffle);
     map['position_ms'] = Variable<int>(positionMs);
     map['is_playing'] = Variable<bool>(isPlaying);
+    map['speed'] = Variable<double>(speed);
     return map;
   }
 
@@ -3659,6 +4294,7 @@ class DbQueueStateData extends DataClass
       isShuffle: Value(isShuffle),
       positionMs: Value(positionMs),
       isPlaying: Value(isPlaying),
+      speed: Value(speed),
     );
   }
 
@@ -3674,6 +4310,7 @@ class DbQueueStateData extends DataClass
       isShuffle: serializer.fromJson<bool>(json['isShuffle']),
       positionMs: serializer.fromJson<int>(json['positionMs']),
       isPlaying: serializer.fromJson<bool>(json['isPlaying']),
+      speed: serializer.fromJson<double>(json['speed']),
     );
   }
   @override
@@ -3686,6 +4323,7 @@ class DbQueueStateData extends DataClass
       'isShuffle': serializer.toJson<bool>(isShuffle),
       'positionMs': serializer.toJson<int>(positionMs),
       'isPlaying': serializer.toJson<bool>(isPlaying),
+      'speed': serializer.toJson<double>(speed),
     };
   }
 
@@ -3696,6 +4334,7 @@ class DbQueueStateData extends DataClass
     bool? isShuffle,
     int? positionMs,
     bool? isPlaying,
+    double? speed,
   }) => DbQueueStateData(
     profileId: profileId ?? this.profileId,
     currentIndex: currentIndex ?? this.currentIndex,
@@ -3703,6 +4342,7 @@ class DbQueueStateData extends DataClass
     isShuffle: isShuffle ?? this.isShuffle,
     positionMs: positionMs ?? this.positionMs,
     isPlaying: isPlaying ?? this.isPlaying,
+    speed: speed ?? this.speed,
   );
   DbQueueStateData copyWithCompanion(DbQueueStateCompanion data) {
     return DbQueueStateData(
@@ -3718,6 +4358,7 @@ class DbQueueStateData extends DataClass
           ? data.positionMs.value
           : this.positionMs,
       isPlaying: data.isPlaying.present ? data.isPlaying.value : this.isPlaying,
+      speed: data.speed.present ? data.speed.value : this.speed,
     );
   }
 
@@ -3729,7 +4370,8 @@ class DbQueueStateData extends DataClass
           ..write('repeatMode: $repeatMode, ')
           ..write('isShuffle: $isShuffle, ')
           ..write('positionMs: $positionMs, ')
-          ..write('isPlaying: $isPlaying')
+          ..write('isPlaying: $isPlaying, ')
+          ..write('speed: $speed')
           ..write(')'))
         .toString();
   }
@@ -3742,6 +4384,7 @@ class DbQueueStateData extends DataClass
     isShuffle,
     positionMs,
     isPlaying,
+    speed,
   );
   @override
   bool operator ==(Object other) =>
@@ -3752,7 +4395,8 @@ class DbQueueStateData extends DataClass
           other.repeatMode == this.repeatMode &&
           other.isShuffle == this.isShuffle &&
           other.positionMs == this.positionMs &&
-          other.isPlaying == this.isPlaying);
+          other.isPlaying == this.isPlaying &&
+          other.speed == this.speed);
 }
 
 class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
@@ -3762,6 +4406,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
   final Value<bool> isShuffle;
   final Value<int> positionMs;
   final Value<bool> isPlaying;
+  final Value<double> speed;
   final Value<int> rowid;
   const DbQueueStateCompanion({
     this.profileId = const Value.absent(),
@@ -3770,6 +4415,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
     this.isShuffle = const Value.absent(),
     this.positionMs = const Value.absent(),
     this.isPlaying = const Value.absent(),
+    this.speed = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DbQueueStateCompanion.insert({
@@ -3779,6 +4425,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
     this.isShuffle = const Value.absent(),
     this.positionMs = const Value.absent(),
     this.isPlaying = const Value.absent(),
+    this.speed = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   static Insertable<DbQueueStateData> custom({
@@ -3788,6 +4435,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
     Expression<bool>? isShuffle,
     Expression<int>? positionMs,
     Expression<bool>? isPlaying,
+    Expression<double>? speed,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3797,6 +4445,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
       if (isShuffle != null) 'is_shuffle': isShuffle,
       if (positionMs != null) 'position_ms': positionMs,
       if (isPlaying != null) 'is_playing': isPlaying,
+      if (speed != null) 'speed': speed,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3808,6 +4457,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
     Value<bool>? isShuffle,
     Value<int>? positionMs,
     Value<bool>? isPlaying,
+    Value<double>? speed,
     Value<int>? rowid,
   }) {
     return DbQueueStateCompanion(
@@ -3817,6 +4467,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
       isShuffle: isShuffle ?? this.isShuffle,
       positionMs: positionMs ?? this.positionMs,
       isPlaying: isPlaying ?? this.isPlaying,
+      speed: speed ?? this.speed,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3842,6 +4493,9 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
     if (isPlaying.present) {
       map['is_playing'] = Variable<bool>(isPlaying.value);
     }
+    if (speed.present) {
+      map['speed'] = Variable<double>(speed.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -3857,6 +4511,7 @@ class DbQueueStateCompanion extends UpdateCompanion<DbQueueStateData> {
           ..write('isShuffle: $isShuffle, ')
           ..write('positionMs: $positionMs, ')
           ..write('isPlaying: $isPlaying, ')
+          ..write('speed: $speed, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -6689,11 +7344,19 @@ typedef $$DbTracksTableCreateCompanionBuilder =
       required String title,
       required String artist,
       Value<String> artistsJson,
-      required String album,
+      Value<String> album,
+      Value<String?> albumArtist,
       required int durationMs,
       required String artworkUri,
       Value<String?> isrc,
       Value<bool> explicit,
+      Value<int?> trackNumber,
+      Value<int?> discNumber,
+      Value<int?> releaseYear,
+      Value<String?> genre,
+      Value<String?> filePath,
+      Value<String?> fileFormat,
+      Value<int?> fileSizeBytes,
       Value<String> availabilityState,
       Value<String?> sourceAttribution,
       required DateTime dateAdded,
@@ -6713,10 +7376,18 @@ typedef $$DbTracksTableUpdateCompanionBuilder =
       Value<String> artist,
       Value<String> artistsJson,
       Value<String> album,
+      Value<String?> albumArtist,
       Value<int> durationMs,
       Value<String> artworkUri,
       Value<String?> isrc,
       Value<bool> explicit,
+      Value<int?> trackNumber,
+      Value<int?> discNumber,
+      Value<int?> releaseYear,
+      Value<String?> genre,
+      Value<String?> filePath,
+      Value<String?> fileFormat,
+      Value<int?> fileSizeBytes,
       Value<String> availabilityState,
       Value<String?> sourceAttribution,
       Value<DateTime> dateAdded,
@@ -6852,6 +7523,11 @@ class $$DbTracksTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => ColumnFilters(column),
@@ -6869,6 +7545,41 @@ class $$DbTracksTableFilterComposer
 
   ColumnFilters<bool> get explicit => $composableBuilder(
     column: $table.explicit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get trackNumber => $composableBuilder(
+    column: $table.trackNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get discNumber => $composableBuilder(
+    column: $table.discNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get genre => $composableBuilder(
+    column: $table.genre,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fileFormat => $composableBuilder(
+    column: $table.fileFormat,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7057,6 +7768,11 @@ class $$DbTracksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => ColumnOrderings(column),
@@ -7074,6 +7790,41 @@ class $$DbTracksTableOrderingComposer
 
   ColumnOrderings<bool> get explicit => $composableBuilder(
     column: $table.explicit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get trackNumber => $composableBuilder(
+    column: $table.trackNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get discNumber => $composableBuilder(
+    column: $table.discNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get genre => $composableBuilder(
+    column: $table.genre,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fileFormat => $composableBuilder(
+    column: $table.fileFormat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -7154,6 +7905,11 @@ class $$DbTracksTableAnnotationComposer
   GeneratedColumn<String> get album =>
       $composableBuilder(column: $table.album, builder: (column) => column);
 
+  GeneratedColumn<String> get albumArtist => $composableBuilder(
+    column: $table.albumArtist,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => column,
@@ -7169,6 +7925,37 @@ class $$DbTracksTableAnnotationComposer
 
   GeneratedColumn<bool> get explicit =>
       $composableBuilder(column: $table.explicit, builder: (column) => column);
+
+  GeneratedColumn<int> get trackNumber => $composableBuilder(
+    column: $table.trackNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get discNumber => $composableBuilder(
+    column: $table.discNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get releaseYear => $composableBuilder(
+    column: $table.releaseYear,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get genre =>
+      $composableBuilder(column: $table.genre, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get fileFormat => $composableBuilder(
+    column: $table.fileFormat,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get availabilityState => $composableBuilder(
     column: $table.availabilityState,
@@ -7346,10 +8133,18 @@ class $$DbTracksTableTableManager
                 Value<String> artist = const Value.absent(),
                 Value<String> artistsJson = const Value.absent(),
                 Value<String> album = const Value.absent(),
+                Value<String?> albumArtist = const Value.absent(),
                 Value<int> durationMs = const Value.absent(),
                 Value<String> artworkUri = const Value.absent(),
                 Value<String?> isrc = const Value.absent(),
                 Value<bool> explicit = const Value.absent(),
+                Value<int?> trackNumber = const Value.absent(),
+                Value<int?> discNumber = const Value.absent(),
+                Value<int?> releaseYear = const Value.absent(),
+                Value<String?> genre = const Value.absent(),
+                Value<String?> filePath = const Value.absent(),
+                Value<String?> fileFormat = const Value.absent(),
+                Value<int?> fileSizeBytes = const Value.absent(),
                 Value<String> availabilityState = const Value.absent(),
                 Value<String?> sourceAttribution = const Value.absent(),
                 Value<DateTime> dateAdded = const Value.absent(),
@@ -7367,10 +8162,18 @@ class $$DbTracksTableTableManager
                 artist: artist,
                 artistsJson: artistsJson,
                 album: album,
+                albumArtist: albumArtist,
                 durationMs: durationMs,
                 artworkUri: artworkUri,
                 isrc: isrc,
                 explicit: explicit,
+                trackNumber: trackNumber,
+                discNumber: discNumber,
+                releaseYear: releaseYear,
+                genre: genre,
+                filePath: filePath,
+                fileFormat: fileFormat,
+                fileSizeBytes: fileSizeBytes,
                 availabilityState: availabilityState,
                 sourceAttribution: sourceAttribution,
                 dateAdded: dateAdded,
@@ -7389,11 +8192,19 @@ class $$DbTracksTableTableManager
                 required String title,
                 required String artist,
                 Value<String> artistsJson = const Value.absent(),
-                required String album,
+                Value<String> album = const Value.absent(),
+                Value<String?> albumArtist = const Value.absent(),
                 required int durationMs,
                 required String artworkUri,
                 Value<String?> isrc = const Value.absent(),
                 Value<bool> explicit = const Value.absent(),
+                Value<int?> trackNumber = const Value.absent(),
+                Value<int?> discNumber = const Value.absent(),
+                Value<int?> releaseYear = const Value.absent(),
+                Value<String?> genre = const Value.absent(),
+                Value<String?> filePath = const Value.absent(),
+                Value<String?> fileFormat = const Value.absent(),
+                Value<int?> fileSizeBytes = const Value.absent(),
                 Value<String> availabilityState = const Value.absent(),
                 Value<String?> sourceAttribution = const Value.absent(),
                 required DateTime dateAdded,
@@ -7411,10 +8222,18 @@ class $$DbTracksTableTableManager
                 artist: artist,
                 artistsJson: artistsJson,
                 album: album,
+                albumArtist: albumArtist,
                 durationMs: durationMs,
                 artworkUri: artworkUri,
                 isrc: isrc,
                 explicit: explicit,
+                trackNumber: trackNumber,
+                discNumber: discNumber,
+                releaseYear: releaseYear,
+                genre: genre,
+                filePath: filePath,
+                fileFormat: fileFormat,
+                fileSizeBytes: fileSizeBytes,
                 availabilityState: availabilityState,
                 sourceAttribution: sourceAttribution,
                 dateAdded: dateAdded,
@@ -7569,6 +8388,9 @@ typedef $$DbPlaylistsTableCreateCompanionBuilder =
       required DateTime updatedAt,
       Value<bool> isSystem,
       Value<bool> isDeleted,
+      Value<int> revision,
+      Value<String?> sourceProvider,
+      Value<String?> sourcePlaylistId,
       Value<int> rowid,
     });
 typedef $$DbPlaylistsTableUpdateCompanionBuilder =
@@ -7582,6 +8404,9 @@ typedef $$DbPlaylistsTableUpdateCompanionBuilder =
       Value<DateTime> updatedAt,
       Value<bool> isSystem,
       Value<bool> isDeleted,
+      Value<int> revision,
+      Value<String?> sourceProvider,
+      Value<String?> sourcePlaylistId,
       Value<int> rowid,
     });
 
@@ -7665,6 +8490,21 @@ class $$DbPlaylistsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceProvider => $composableBuilder(
+    column: $table.sourceProvider,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePlaylistId => $composableBuilder(
+    column: $table.sourcePlaylistId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> dbPlaylistEntriesRefs(
     Expression<bool> Function($$DbPlaylistEntriesTableFilterComposer f) f,
   ) {
@@ -7744,6 +8584,21 @@ class $$DbPlaylistsTableOrderingComposer
     column: $table.isDeleted,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceProvider => $composableBuilder(
+    column: $table.sourceProvider,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourcePlaylistId => $composableBuilder(
+    column: $table.sourcePlaylistId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DbPlaylistsTableAnnotationComposer
@@ -7785,6 +8640,19 @@ class $$DbPlaylistsTableAnnotationComposer
 
   GeneratedColumn<bool> get isDeleted =>
       $composableBuilder(column: $table.isDeleted, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceProvider => $composableBuilder(
+    column: $table.sourceProvider,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourcePlaylistId => $composableBuilder(
+    column: $table.sourcePlaylistId,
+    builder: (column) => column,
+  );
 
   Expression<T> dbPlaylistEntriesRefs<T extends Object>(
     Expression<T> Function($$DbPlaylistEntriesTableAnnotationComposer a) f,
@@ -7850,6 +8718,9 @@ class $$DbPlaylistsTableTableManager
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<bool> isSystem = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<String?> sourceProvider = const Value.absent(),
+                Value<String?> sourcePlaylistId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbPlaylistsCompanion(
                 id: id,
@@ -7861,6 +8732,9 @@ class $$DbPlaylistsTableTableManager
                 updatedAt: updatedAt,
                 isSystem: isSystem,
                 isDeleted: isDeleted,
+                revision: revision,
+                sourceProvider: sourceProvider,
+                sourcePlaylistId: sourcePlaylistId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -7874,6 +8748,9 @@ class $$DbPlaylistsTableTableManager
                 required DateTime updatedAt,
                 Value<bool> isSystem = const Value.absent(),
                 Value<bool> isDeleted = const Value.absent(),
+                Value<int> revision = const Value.absent(),
+                Value<String?> sourceProvider = const Value.absent(),
+                Value<String?> sourcePlaylistId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbPlaylistsCompanion.insert(
                 id: id,
@@ -7885,6 +8762,9 @@ class $$DbPlaylistsTableTableManager
                 updatedAt: updatedAt,
                 isSystem: isSystem,
                 isDeleted: isDeleted,
+                revision: revision,
+                sourceProvider: sourceProvider,
+                sourcePlaylistId: sourcePlaylistId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -7953,6 +8833,7 @@ typedef $$DbPlaylistEntriesTableCreateCompanionBuilder =
       required String trackId,
       required int position,
       required DateTime dateAdded,
+      Value<int> revision,
       Value<int> rowid,
     });
 typedef $$DbPlaylistEntriesTableUpdateCompanionBuilder =
@@ -7962,6 +8843,7 @@ typedef $$DbPlaylistEntriesTableUpdateCompanionBuilder =
       Value<String> trackId,
       Value<int> position,
       Value<DateTime> dateAdded,
+      Value<int> revision,
       Value<int> rowid,
     });
 
@@ -8038,6 +8920,11 @@ class $$DbPlaylistEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$DbPlaylistsTableFilterComposer get playlistId {
     final $$DbPlaylistsTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -8109,6 +8996,11 @@ class $$DbPlaylistEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$DbPlaylistsTableOrderingComposer get playlistId {
     final $$DbPlaylistsTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -8173,6 +9065,9 @@ class $$DbPlaylistEntriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get dateAdded =>
       $composableBuilder(column: $table.dateAdded, builder: (column) => column);
+
+  GeneratedColumn<int> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
 
   $$DbPlaylistsTableAnnotationComposer get playlistId {
     final $$DbPlaylistsTableAnnotationComposer composer = $composerBuilder(
@@ -8259,6 +9154,7 @@ class $$DbPlaylistEntriesTableTableManager
                 Value<String> trackId = const Value.absent(),
                 Value<int> position = const Value.absent(),
                 Value<DateTime> dateAdded = const Value.absent(),
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbPlaylistEntriesCompanion(
                 id: id,
@@ -8266,6 +9162,7 @@ class $$DbPlaylistEntriesTableTableManager
                 trackId: trackId,
                 position: position,
                 dateAdded: dateAdded,
+                revision: revision,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8275,6 +9172,7 @@ class $$DbPlaylistEntriesTableTableManager
                 required String trackId,
                 required int position,
                 required DateTime dateAdded,
+                Value<int> revision = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbPlaylistEntriesCompanion.insert(
                 id: id,
@@ -8282,6 +9180,7 @@ class $$DbPlaylistEntriesTableTableManager
                 trackId: trackId,
                 position: position,
                 dateAdded: dateAdded,
+                revision: revision,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -8651,9 +9550,9 @@ typedef $$DbAlbumsTableCreateCompanionBuilder =
     DbAlbumsCompanion Function({
       required String id,
       required String title,
-      required String artist,
-      required int year,
-      required String artworkUri,
+      Value<String> artist,
+      Value<int?> year,
+      Value<String> artworkUri,
       Value<String?> sourceAttribution,
       Value<bool> isSaved,
       Value<int> rowid,
@@ -8663,7 +9562,7 @@ typedef $$DbAlbumsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> title,
       Value<String> artist,
-      Value<int> year,
+      Value<int?> year,
       Value<String> artworkUri,
       Value<String?> sourceAttribution,
       Value<bool> isSaved,
@@ -8826,7 +9725,7 @@ class $$DbAlbumsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> artist = const Value.absent(),
-                Value<int> year = const Value.absent(),
+                Value<int?> year = const Value.absent(),
                 Value<String> artworkUri = const Value.absent(),
                 Value<String?> sourceAttribution = const Value.absent(),
                 Value<bool> isSaved = const Value.absent(),
@@ -8845,9 +9744,9 @@ class $$DbAlbumsTableTableManager
               ({
                 required String id,
                 required String title,
-                required String artist,
-                required int year,
-                required String artworkUri,
+                Value<String> artist = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<String> artworkUri = const Value.absent(),
                 Value<String?> sourceAttribution = const Value.absent(),
                 Value<bool> isSaved = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -8896,7 +9795,7 @@ typedef $$DbArtistsTableCreateCompanionBuilder =
     DbArtistsCompanion Function({
       required String id,
       required String name,
-      required String portraitUri,
+      Value<String> portraitUri,
       Value<String?> sourceAttribution,
       Value<bool> isFollowed,
       Value<int> rowid,
@@ -9061,7 +9960,7 @@ class $$DbArtistsTableTableManager
               ({
                 required String id,
                 required String name,
-                required String portraitUri,
+                Value<String> portraitUri = const Value.absent(),
                 Value<String?> sourceAttribution = const Value.absent(),
                 Value<bool> isFollowed = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -9418,6 +10317,7 @@ typedef $$DbQueueStateTableCreateCompanionBuilder =
       Value<bool> isShuffle,
       Value<int> positionMs,
       Value<bool> isPlaying,
+      Value<double> speed,
       Value<int> rowid,
     });
 typedef $$DbQueueStateTableUpdateCompanionBuilder =
@@ -9428,6 +10328,7 @@ typedef $$DbQueueStateTableUpdateCompanionBuilder =
       Value<bool> isShuffle,
       Value<int> positionMs,
       Value<bool> isPlaying,
+      Value<double> speed,
       Value<int> rowid,
     });
 
@@ -9467,6 +10368,11 @@ class $$DbQueueStateTableFilterComposer
 
   ColumnFilters<bool> get isPlaying => $composableBuilder(
     column: $table.isPlaying,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get speed => $composableBuilder(
+    column: $table.speed,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9509,6 +10415,11 @@ class $$DbQueueStateTableOrderingComposer
     column: $table.isPlaying,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<double> get speed => $composableBuilder(
+    column: $table.speed,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DbQueueStateTableAnnotationComposer
@@ -9543,6 +10454,9 @@ class $$DbQueueStateTableAnnotationComposer
 
   GeneratedColumn<bool> get isPlaying =>
       $composableBuilder(column: $table.isPlaying, builder: (column) => column);
+
+  GeneratedColumn<double> get speed =>
+      $composableBuilder(column: $table.speed, builder: (column) => column);
 }
 
 class $$DbQueueStateTableTableManager
@@ -9586,6 +10500,7 @@ class $$DbQueueStateTableTableManager
                 Value<bool> isShuffle = const Value.absent(),
                 Value<int> positionMs = const Value.absent(),
                 Value<bool> isPlaying = const Value.absent(),
+                Value<double> speed = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbQueueStateCompanion(
                 profileId: profileId,
@@ -9594,6 +10509,7 @@ class $$DbQueueStateTableTableManager
                 isShuffle: isShuffle,
                 positionMs: positionMs,
                 isPlaying: isPlaying,
+                speed: speed,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9604,6 +10520,7 @@ class $$DbQueueStateTableTableManager
                 Value<bool> isShuffle = const Value.absent(),
                 Value<int> positionMs = const Value.absent(),
                 Value<bool> isPlaying = const Value.absent(),
+                Value<double> speed = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => DbQueueStateCompanion.insert(
                 profileId: profileId,
@@ -9612,6 +10529,7 @@ class $$DbQueueStateTableTableManager
                 isShuffle: isShuffle,
                 positionMs: positionMs,
                 isPlaying: isPlaying,
+                speed: speed,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:rxdart/rxdart.dart';
+
 import '../../domain/models/playback_queue.dart';
 import '../../domain/models/track.dart';
 import '../../domain/repositories/queue_repository.dart';
@@ -13,12 +17,67 @@ class LocalQueueRepository implements QueueRepository {
 
   String _resolveProfile(String? profileId) => profileId ?? 'guest';
 
+  QueueItem _mapItemRow(TypedResult r) {
+    final qEntry = r.readTable(db.dbQueueEntries);
+    final trackRow = r.readTable(db.dbTracks);
+    final isLiked = r.readTableOrNull(db.dbLikedSongs) != null;
+    return QueueItem(
+      id: qEntry.id,
+      trackId: qEntry.trackId,
+      position: qEntry.position,
+      track: _trackFromRow(trackRow, isLiked),
+    );
+  }
+
+  Track _trackFromRow(DbTrack t, bool isLiked) {
+    final artists = t.artistsJson == '[]'
+        ? [t.artist]
+        : List<String>.from((jsonDecode(t.artistsJson) as List).map((e) => e.toString()));
+    List<LyricLine> lyrics = const [];
+    try {
+      final decoded = jsonDecode(t.lyricsJson);
+      if (decoded is List) {
+        lyrics = decoded.whereType<Map<String, dynamic>>().map(LyricLine.fromJson).toList();
+      }
+    } catch (_) {}
+    return Track(
+      id: t.id,
+      providerId: t.providerId,
+      providerTrackId: t.providerTrackId,
+      title: t.title,
+      artist: t.artist,
+      artists: artists,
+      album: t.album,
+      albumArtist: t.albumArtist,
+      duration: Duration(milliseconds: t.durationMs),
+      artworkUri: t.artworkUri,
+      isrc: t.isrc,
+      explicit: t.explicit,
+      trackNumber: t.trackNumber,
+      discNumber: t.discNumber,
+      releaseYear: t.releaseYear,
+      genre: t.genre,
+      filePath: t.filePath,
+      fileFormat: t.fileFormat,
+      fileSizeBytes: t.fileSizeBytes,
+      dateAdded: t.dateAdded,
+      isLiked: isLiked,
+      isCached: t.isCached,
+      localCachePath: t.localCachePath,
+      lyrics: lyrics,
+      playCount: t.playCount,
+      lastPlayedAt: t.lastPlayedAt,
+    );
+  }
+
   @override
   Future<Result<PlaybackQueueState, AppError>> loadQueue({String? profileId}) async {
     try {
       final pid = _resolveProfile(profileId);
 
-      final stateRow = await (db.select(db.dbQueueState)..where((tbl) => tbl.profileId.equals(pid))).getSingleOrNull();
+      final stateRow =
+          await (db.select(db.dbQueueState)..where((tbl) => tbl.profileId.equals(pid)))
+              .getSingleOrNull();
 
       final entriesQuery = (db.select(db.dbQueueEntries)
             ..where((tbl) => tbl.profileId.equals(pid))
@@ -33,30 +92,7 @@ class LocalQueueRepository implements QueueRepository {
       ]);
 
       final rows = await entriesQuery.get();
-      final items = rows.map((r) {
-        final qEntry = r.readTable(db.dbQueueEntries);
-        final trackRow = r.readTable(db.dbTracks);
-        final isLiked = r.readTableOrNull(db.dbLikedSongs) != null;
-
-        return QueueItem(
-          id: qEntry.id,
-          trackId: qEntry.trackId,
-          position: qEntry.position,
-          track: Track(
-            id: trackRow.id,
-            providerId: trackRow.providerId,
-            providerTrackId: trackRow.providerTrackId,
-            title: trackRow.title,
-            artist: trackRow.artist,
-            album: trackRow.album,
-            duration: Duration(milliseconds: trackRow.durationMs),
-            artworkUri: trackRow.artworkUri,
-            dateAdded: trackRow.dateAdded,
-            isLiked: isLiked,
-            isCached: trackRow.isCached,
-          ),
-        );
-      }).toList();
+      final items = rows.map(_mapItemRow).toList();
 
       final repeatMode = switch (stateRow?.repeatMode) {
         'all' => CaviaRepeatMode.all,
@@ -70,7 +106,8 @@ class LocalQueueRepository implements QueueRepository {
         repeatMode: repeatMode,
         isShuffle: stateRow?.isShuffle ?? false,
         position: Duration(milliseconds: stateRow?.positionMs ?? 0),
-        isPlaying: stateRow?.isPlaying ?? false,
+        isPlaying: false, // never resume claiming to be playing across launches
+        speed: stateRow?.speed ?? 1.0,
       ));
     } catch (e, st) {
       return Result.failure(DatabaseError(details: 'Failed to load queue: $e', cause: st));
@@ -83,10 +120,8 @@ class LocalQueueRepository implements QueueRepository {
       final pid = _resolveProfile(profileId);
 
       await db.transaction(() async {
-        // Clear previous queue entries for this profile
         await (db.delete(db.dbQueueEntries)..where((tbl) => tbl.profileId.equals(pid))).go();
 
-        // Insert new entries
         for (int i = 0; i < state.items.length; i++) {
           final item = state.items[i];
           await db.into(db.dbQueueEntries).insert(
@@ -99,7 +134,6 @@ class LocalQueueRepository implements QueueRepository {
               );
         }
 
-        // Upsert state
         await db.into(db.dbQueueState).insertOnConflictUpdate(
               DbQueueStateCompanion.insert(
                 profileId: Value(pid),
@@ -107,7 +141,8 @@ class LocalQueueRepository implements QueueRepository {
                 repeatMode: Value(state.repeatMode.name),
                 isShuffle: Value(state.isShuffle),
                 positionMs: Value(state.position.inMilliseconds),
-                isPlaying: Value(state.isPlaying),
+                isPlaying: Value(state.isPlaying && state.currentIndex >= 0),
+                speed: Value(state.speed.clamp(0.25, 4.0)),
               ),
             );
       });
@@ -122,10 +157,22 @@ class LocalQueueRepository implements QueueRepository {
   Stream<PlaybackQueueState> watchQueue({String? profileId}) {
     final pid = _resolveProfile(profileId);
 
-    return db.select(db.dbQueueState).watch().asyncMap((_) async {
-      final res = await loadQueue(profileId: pid);
-      return res.dataOrNull ?? PlaybackQueueState.initial();
-    });
+    // Both tables must trigger rebuilds: entry mutations and state mutations
+    // each separately produce a consistent re-loaded snapshot.
+    final entriesWatch = (db.select(db.dbQueueEntries)
+          ..where((tbl) => tbl.profileId.equals(pid)))
+        .watch();
+    final stateWatch =
+        (db.select(db.dbQueueState)..where((tbl) => tbl.profileId.equals(pid))).watch();
+
+    return MergeStream([entriesWatch, stateWatch])
+        .asyncMap((_) => _loadQueueState(pid))
+        .asBroadcastStream();
+  }
+
+  Future<PlaybackQueueState> _loadQueueState(String pid) async {
+    final res = await loadQueue(profileId: pid);
+    return res.dataOrNull ?? PlaybackQueueState.initial();
   }
 
   @override
@@ -134,13 +181,7 @@ class LocalQueueRepository implements QueueRepository {
       final pid = _resolveProfile(profileId);
       await db.transaction(() async {
         await (db.delete(db.dbQueueEntries)..where((tbl) => tbl.profileId.equals(pid))).go();
-        await (db.update(db.dbQueueState)..where((tbl) => tbl.profileId.equals(pid))).write(
-          const DbQueueStateCompanion(
-            currentIndex: Value(-1),
-            positionMs: Value(0),
-            isPlaying: Value(false),
-          ),
-        );
+        await db.delete(db.dbQueueState).go();
       });
       return const Result.success(null);
     } catch (e, st) {
@@ -148,4 +189,3 @@ class LocalQueueRepository implements QueueRepository {
     }
   }
 }
-

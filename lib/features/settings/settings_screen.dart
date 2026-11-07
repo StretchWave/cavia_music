@@ -13,6 +13,7 @@ import '../spotify_import/spotify_import_screen.dart';
 import 'subscreens/playback_settings_screen.dart';
 import 'subscreens/appearance_settings_screen.dart';
 import 'subscreens/about_screen.dart';
+import 'subscreens/providers_status_screen.dart';
 import 'dialogs/auth_dialog.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -116,7 +117,9 @@ class SettingsScreen extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  settings.cacheSizeFormatted,
+                                  settings.isMeasuringCache
+                                      ? 'Measuring…'
+                                      : settings.cacheSizeFormatted,
                                   style: CaviaTypography.body.copyWith(
                                     color: CaviaColors.textSilver,
                                     fontWeight: FontWeight.w600,
@@ -148,6 +151,41 @@ class SettingsScreen extends StatelessWidget {
                                 CaviaToast.show(context, CacheMessages.noChangesMade);
                               }
                             },
+                          ),
+
+                          // Cache Storage Quota (real policy value consumed
+                          // by the LRU eviction coordinator).
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(
+                              Icons.sd_storage_rounded,
+                              color: CaviaColors.textIvory,
+                              size: 24,
+                            ),
+                            title: const Text('Cache storage limit',
+                                style: CaviaTypography.body),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  settings.isMeasuringCache
+                                      ? 'Measuring used space…'
+                                      : '${settings.cacheSizeFormatted} used of ${settings.cacheQuotaFormatted}',
+                                  style: CaviaTypography.caption,
+                                ),
+                                Slider(
+                                  value: settings.cacheQuotaBytes
+                                      .clamp(128.0 * 1024 * 1024, 6.0 * 1024 * 1024 * 1024),
+                                  min: 128.0 * 1024 * 1024, // 128 MB
+                                  max: 6.0 * 1024 * 1024 * 1024, // 6 GB
+                                  activeColor: CaviaColors.vermilionBright,
+                                  onChanged:
+                                      settings.isMeasuringCache
+                                          ? null
+                                          : settings.setCacheQuota,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -348,11 +386,11 @@ class SettingsScreen extends StatelessWidget {
                             icon: Icons.layers_outlined,
                             label: 'Providers',
                             onTap: () {
-                              CaviaDialog.show(
+                              Navigator.push(
                                 context,
-                                title: 'Audio Source Routing',
-                                content: 'Cavia Music is engineered with a provider-agnostic audio resolution pipeline. Streams are resolved and fuzzy-matched dynamically across YouTube Music and configured community lossless endpoints without user account requirements.',
-                                confirmLabel: 'Got it',
+                                MaterialPageRoute(
+                                  builder: (_) => const ProviderStatusScreen(),
+                                ),
                               );
                             },
                           ),

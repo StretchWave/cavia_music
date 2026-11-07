@@ -77,13 +77,19 @@ class _MainScaffoldState extends State<MainScaffold> {
           },
         ),
 
-        // Floating Mini-Player (Positioned directly above bottom nav bar)
+        // Floating Mini-Player (Positioned directly above bottom nav bar).
+        // Hidden entirely while no playback is queued — honest empty state.
         Positioned(
           left: 16,
           right: 16,
           bottom: 74,
-          child: MiniPlayer(
-            onTap: () => playback.setFullPlayerExpanded(true),
+          child: ListenableBuilder(
+            listenable: playback,
+            builder: (context, _) => playback.hasCurrentSong
+                ? MiniPlayer(
+                    onTap: () => playback.setFullPlayerExpanded(true),
+                  )
+                : const SizedBox.shrink(),
           ),
         ),
 
@@ -129,8 +135,13 @@ class _MainScaffoldState extends State<MainScaffold> {
                 left: 24,
                 right: 24,
                 bottom: 16,
-                child: MiniPlayer(
-                  onTap: () => playback.setFullPlayerExpanded(true),
+                child: ListenableBuilder(
+                  listenable: playback,
+                  builder: (context, _) => playback.hasCurrentSong
+                      ? MiniPlayer(
+                          onTap: () => playback.setFullPlayerExpanded(true),
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ),
             ],

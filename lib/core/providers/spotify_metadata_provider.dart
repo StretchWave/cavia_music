@@ -1,4 +1,4 @@
-import 'dart:async';
+import '../config/cavia_config.dart';
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
 import '../domain/models/track.dart';
@@ -6,13 +6,20 @@ import '../playback/playback_source.dart';
 import '../playback/playback_failure.dart';
 import 'music_provider.dart';
 
-/// Provider for Spotify metadata search and playlist migration.
+/// Provider for Spotify catalog metadata. Spotify only exposes this surface
+/// through authenticated developer credentials, so without a configured
+/// client id the provider honestly reports itself as not operational and its
+/// search/metadata calls fail with an explanation — no placeholder data.
 class SpotifyMetadataProvider implements MusicProvider {
+  static const String _notConfiguredMessage =
+      'Spotify metadata search is not configured on this build. '
+      'Provide CAVIA_SPOTIFY_CLIENT_ID to enable it.';
+
   @override
   String get id => 'spotify';
 
   @override
-  String get displayName => 'Spotify';
+  String get displayName => 'Spotify (metadata only)';
 
   @override
   ProviderCapabilities get capabilities => const ProviderCapabilities(
@@ -27,7 +34,7 @@ class SpotifyMetadataProvider implements MusicProvider {
       );
 
   @override
-  bool get isOperational => true;
+  bool get isOperational => CaviaConfig.spotifyConfigured;
 
   @override
   Future<Result<List<SearchResultItem>, AppError>> search({
@@ -38,50 +45,15 @@ class SpotifyMetadataProvider implements MusicProvider {
     CancellationToken? cancelToken,
   }) async {
     if (cancelToken?.isCancelled == true) {
-      return const Result.failure(ValidationError('Search operation cancelled'));
+      return const Result.failure(ValidationError('Search cancelled'));
     }
 
-    if (query.trim().isEmpty) return const Result.success([]);
-
-    return Result.success([
-      SearchResultItem(
-        id: 'sp_${query.hashCode}',
-        title: query,
-        subtitle: 'Spotify Metadata • Importable',
-        category: SearchFilterCategory.songs,
-        providerId: id,
-        sourceAttribution: 'Spotify',
-        duration: const Duration(minutes: 3, seconds: 20),
-        trackData: Track(
-          id: 'sp_${query.hashCode}',
-          providerId: 'spotify',
-          providerTrackId: 'spotify_track_id',
-          title: query,
-          artist: 'Spotify Artist',
-          album: 'Spotify Album',
-          duration: const Duration(minutes: 3, seconds: 20),
-          artworkAsset: 'assets/images/cover_afterglow.jpg',
-          sourceAttribution: 'Spotify',
-          dateAdded: DateTime.now(),
-        ),
-      ),
-    ]);
+    return const Result.failure(ValidationError(_notConfiguredMessage));
   }
 
   @override
   Future<Result<Track, AppError>> resolveTrackMetadata(String providerTrackId) async {
-    return Result.success(Track(
-      id: 'sp_$providerTrackId',
-      providerId: 'spotify',
-      providerTrackId: providerTrackId,
-      title: 'Imported Spotify Track',
-      artist: 'Spotify Artist',
-      album: 'Spotify Album',
-      duration: const Duration(minutes: 3, seconds: 20),
-      artworkAsset: 'assets/images/cover_afterglow.jpg',
-      sourceAttribution: 'Spotify',
-      dateAdded: DateTime.now(),
-    ));
+    return const Result.failure(NotFoundError(_notConfiguredMessage));
   }
 
   @override

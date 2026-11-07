@@ -46,6 +46,9 @@ class JustAudioEngine implements AudioEngine {
   @override
   double get volume => _player.volume;
 
+  @override
+  double get speed => _player.speed;
+
   PlaybackFailure? get lastError => _lastError;
 
   @override
@@ -199,6 +202,15 @@ class JustAudioEngine implements AudioEngine {
   @override
   Future<void> setVolume(double volume) async {
     await _player.setVolume(volume.clamp(0.0, 1.0));
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    try {
+      await _player.setSpeed(speed.clamp(0.25, 4.0));
+    } catch (e) {
+      _handlePlayerError(e);
+    }
   }
 
   @override

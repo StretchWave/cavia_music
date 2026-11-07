@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'audio_engine.dart';
-import 'playback_machine_state.dart';
-import 'playback_source.dart';
+import 'package:cavia_music/core/playback/audio_engine.dart';
+import 'package:cavia_music/core/playback/playback_machine_state.dart';
+import 'package:cavia_music/core/playback/playback_source.dart';
 
-/// In-memory controllable audio engine for unit, widget, and platform-mock tests.
+/// In-memory controllable audio engine for unit, widget, and platform-mock
+/// tests ONLY. Never references lib/ production code paths.
 class MockAudioEngine implements AudioEngine {
   final _positionController = StreamController<Duration>.broadcast();
   final _durationController = StreamController<Duration?>.broadcast();
@@ -14,6 +15,7 @@ class MockAudioEngine implements AudioEngine {
   Duration _currentPosition = Duration.zero;
   final Duration _totalDuration = const Duration(minutes: 3, seconds: 30);
   double _volume = 1.0;
+  double _speed = 1.0;
   PlaybackSource? _currentSource;
   Timer? _ticker;
 
@@ -43,6 +45,9 @@ class MockAudioEngine implements AudioEngine {
 
   @override
   double get volume => _volume;
+
+  @override
+  double get speed => _speed;
 
   PlaybackSource? get currentSource => _currentSource;
 
@@ -104,6 +109,11 @@ class MockAudioEngine implements AudioEngine {
   @override
   Future<void> setVolume(double volume) async {
     _volume = volume.clamp(0.0, 1.0);
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    _speed = speed.clamp(0.25, 4.0);
   }
 
   @override

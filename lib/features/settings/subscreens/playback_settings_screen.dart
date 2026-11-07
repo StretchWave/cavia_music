@@ -83,6 +83,67 @@ class PlaybackSettingsScreen extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
+                    // Real-time playback speed (applies instantly to the engine)
+                    Text('PLAYBACK SPEED', style: CaviaTypography.sectionLabel),
+                    const SizedBox(height: 8),
+                    GlassContainer(
+                      radius: CaviaGlass.radiusCard,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Tempo', style: CaviaTypography.body),
+                              Text(
+                                '${settings.playbackSpeed.toStringAsFixed(2)}×',
+                                style: CaviaTypography.body.copyWith(
+                                  color: CaviaColors.vermilionBright,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Slider(
+                            value: settings.playbackSpeed.clamp(0.25, 4.0),
+                            min: 0.25,
+                            max: 4.0,
+                            divisions: 75,
+                            activeColor: CaviaColors.vermilionBright,
+                            onChanged: (v) => settings.setPlaybackSpeed(v),
+                          ),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: [0.75, 1.0, 1.25, 1.5, 2.0].map((s) {
+                              final selected =
+                                  (settings.playbackSpeed - s).abs() < 0.001;
+                              return ActionChip(
+                                label: Text(
+                                  '${s.toStringAsFixed(2)}×',
+                                  style: CaviaTypography.caption.copyWith(
+                                    color: selected
+                                        ? CaviaColors.vermilionBright
+                                        : CaviaColors.textSilver,
+                                  ),
+                                ),
+                                backgroundColor: CaviaColors.glassSurface,
+                                side: BorderSide(
+                                  color: selected
+                                      ? CaviaColors.vermilionBright
+                                      : CaviaColors.glassBorderSubtle,
+                                ),
+                                onPressed: () => settings.setPlaybackSpeed(s),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // Playback Toggles
                     Text('AUDIO ENGINE', style: CaviaTypography.sectionLabel),
                     const SizedBox(height: 8),
@@ -94,7 +155,10 @@ class PlaybackSettingsScreen extends StatelessWidget {
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Crossfade Transitions', style: CaviaTypography.body),
-                            subtitle: const Text('Seamless blending between tracks', style: CaviaTypography.caption),
+                            subtitle: const Text(
+                              'Honest status: not audible in this build yet — track changes are instant',
+                              style: CaviaTypography.caption,
+                            ),
                             value: settings.crossfade,
                             activeThumbColor: CaviaColors.vermilionBright,
                             onChanged: settings.toggleCrossfade,
@@ -112,7 +176,10 @@ class PlaybackSettingsScreen extends StatelessWidget {
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Normalize Volume', style: CaviaTypography.body),
-                            subtitle: const Text('Apply consistent audio loudness across tracks', style: CaviaTypography.caption),
+                            subtitle: const Text(
+                              'Honest status: not audible in this build yet',
+                              style: CaviaTypography.caption,
+                            ),
                             value: settings.normalizeVolume,
                             activeThumbColor: CaviaColors.vermilionBright,
                             onChanged: settings.toggleNormalizeVolume,

@@ -1,116 +1,109 @@
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
-import '../domain/result/result.dart';
-import '../domain/result/app_error.dart';
 import '../domain/models/track.dart';
 import '../domain/models/playback_queue.dart';
 import '../domain/repositories/queue_repository.dart';
-import '../domain/repositories/track_repository.dart';
-import '../mock_data/mock_library.dart';
 import '../playback/audio_engine.dart';
 import '../playback/just_audio_engine.dart';
-import '../playback/mock_audio_engine.dart';
 import '../playback/playback_machine_state.dart';
+import '../playback/playback_source.dart';
+import '../playback/playback_failure.dart';
 import '../playback/track_resolver.dart';
 import '../playback/queue_manager.dart';
 import '../playback/cavia_audio_handler.dart';
-import '../providers/provider_registry.dart';
-import '../providers/local_audio_provider.dart';
+import 'dart:io' show Platform;
 
 export '../domain/models/playback_queue.dart' show CaviaRepeatMode;
 export '../playback/playback_machine_state.dart';
 export '../playback/playback_failure.dart';
 
-/// Central Playback Coordinator connecting UI, AudioEngine, QueueManager,
-/// Media Sessions, and Track Resolvers.
+/// Central playback coordinator connecting the UI, [AudioEngine],
+/// [QueueManager], the platform media session, and [TrackResolver].
+///
+/// State starts completely empty: there is no current song and no queue until
+/// the user or a restored queue provides one, and a restored queue is always
+/// reported as paused (never as "playing" across launches).
 class PlaybackController extends ChangeNotifier {
   final AudioEngine audioEngine;
-  final TrackResolver trackResolver;
+  final TrackResolver? trackResolver;
   final QueueRepository? queueRepository;
-  final TrackRepository? trackRepository;
   final CaviaAudioHandler? audioHandler;
 
   final QueueManager _queueManager = QueueManager();
 
-  Song _currentSong = MockLibrary.allSongs[0];
-  PlaybackMachineState _state = PlaybackMachineState.playing;
-  Duration _currentPosition = const Duration(minutes: 2, seconds: 18);
-  Duration _totalDuration = MockLibrary.allSongs[0].duration;
+  Song? _currentSong;
+  PlaybackMachineState _state = PlaybackMachineState.idle;
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
   String? _lastErrorMessage;
+  double _playbackSpeed = 1.0;
 
   int _requestEpoch = 0;
   bool _isFullPlayerExpanded = false;
   bool _isQueueSheetOpen = false;
   bool _isLyricsOpen = false;
   bool _isDisposed = false;
-
   StreamSubscription? _posSub;
   StreamSubscription? _durSub;
   StreamSubscription? _stateSub;
 
   PlaybackController({
     AudioEngine? audioEngine,
-    TrackResolver? trackResolver,
+    this.trackResolver,
     this.queueRepository,
-    this.trackRepository,
     this.audioHandler,
-  })  : audioEngine = audioEngine ?? _resolveDefaultEngine(),
-        trackResolver = trackResolver ??
-            TrackResolver(
-              providerRegistry: ProviderRegistry(initialProviders: [
-                if (trackRepository != null)
-                  LocalAudioProvider(trackRepository: trackRepository),
-              ]),
-              trackRepository: trackRepository ?? _FallbackTrackRepo(),
-            ) {
+  }) : audioEngine = audioEngine ?? _resolveDefaultEngine() {
     _initQueue();
     _bindEngineStreams();
     _bindAudioHandler();
   }
 
   static AudioEngine _resolveDefaultEngine() {
+    // Widget/unit test environments never spin up the real audio pipeline;
+    // tests that need playback inject a controllable engine explicitly.
     try {
       if (!kIsWeb && Platform.environment.containsKey('FLUTTER_TEST')) {
-        return MockAudioEngine();
+        return _NoOpEngine();
       }
     } catch (_) {}
     return JustAudioEngine();
   }
 
   void _initQueue() async {
-    _queueManager.setQueue(List.from(MockLibrary.allSongs), startIndex: 0);
-    _currentSong = _queueManager.currentSong ?? MockLibrary.allSongs[0];
-    _totalDuration = _currentSong.duration;
+    final repo = queueRepository;
+    if (repo == null) return;
 
-    if (queueRepository != null) {
-      final res = await queueRepository!.loadQueue();
-      if (_isDisposed) return;
-      if (res.isSuccess && res.dataOrNull != null) {
-        final state = res.dataOrNull!;
-        if (state.items.isNotEmpty) {
-          final loadedSongs = state.items
-              .map((i) => i.track ?? MockLibrary.allSongs[0])
-              .toList();
+    final res = await repo.loadQueue();
+    if (_isDisposed) return;
+    if (res.isSuccess && res.dataOrNull != null) {
+      final state = res.dataOrNull!;
+      if (state.items.isNotEmpty) {
+        final loadedSongs = state.items.map((i) => i.track).whereType<Song>().toList();
+        if (loadedSongs.isNotEmpty) {
           _queueManager.setQueue(loadedSongs, startIndex: state.currentIndex);
           _queueManager.setRepeatMode(state.repeatMode);
-          if (state.isShuffle) _queueManager.toggleShuffle();
+          if (_queueManager.isShuffle != state.isShuffle) {
+            _queueManager.toggleShuffle();
+          }
 
           _currentSong = _queueManager.currentSong ?? loadedSongs.first;
           _currentPosition = state.position;
-          _totalDuration = _currentSong.duration;
-          _state = state.isPlaying
-              ? PlaybackMachineState.playing
-              : PlaybackMachineState.paused;
+          _totalDuration = _currentSong?.duration ?? Duration.zero;
+          _playbackSpeed = state.speed;
+          // Every restored session is honestly paused.
+          _state = PlaybackMachineState.paused;
+          unawaited(audioEngine.init().then((_) => audioEngine.setSpeed(_playbackSpeed)));
+          _updateMediaSessionMetadata();
           notifyListeners();
+          _persistQueue();
         }
       }
     }
   }
 
   void _bindEngineStreams() {
-    audioEngine.init();
+    unawaited(audioEngine.init());
 
     _posSub = audioEngine.positionStream.listen((pos) {
       if (_isDisposed) return;
@@ -156,13 +149,15 @@ class PlaybackController extends ChangeNotifier {
   }
 
   void _updateMediaSessionMetadata() {
+    final song = _currentSong;
+    if (song == null) return;
     audioHandler?.updateTrackMetadata(
-      id: _currentSong.id,
-      title: _currentSong.title,
-      artist: _currentSong.artist,
-      album: _currentSong.album,
+      id: song.id,
+      title: song.title,
+      artist: song.artist,
+      album: song.album,
       duration: _totalDuration,
-      artworkAssetOrUrl: _currentSong.artworkAsset,
+      artworkAssetOrUrl: song.artworkAsset,
     );
   }
 
@@ -195,20 +190,28 @@ class PlaybackController extends ChangeNotifier {
     );
   }
 
+  // ---------------------------------------------------------------------
   // Getters
-  Song get currentSong => _currentSong;
+  // ---------------------------------------------------------------------
+
+  Song? get currentSong => _currentSong;
+  bool get hasCurrentSong => _currentSong != null;
   bool get isPlaying => _state == PlaybackMachineState.playing;
   PlaybackMachineState get playbackState => _state;
   Duration get currentPosition => _currentPosition;
   Duration get totalDuration => _totalDuration;
   String? get lastErrorMessage => _lastErrorMessage;
+  double get playbackSpeed => _playbackSpeed;
 
   double get progress {
     if (_totalDuration.inMilliseconds == 0) return 0.0;
-    return (_currentPosition.inMilliseconds / _totalDuration.inMilliseconds).clamp(0.0, 1.0);
+    return (_currentPosition.inMilliseconds / _totalDuration.inMilliseconds)
+        .clamp(0.0, 1.0);
   }
 
   List<Song> get queue => _queueManager.songs;
+  bool get hasQueue => _queueManager.length > 0;
+  int get queueLength => _queueManager.length;
   int get currentIndex => _queueManager.currentIndex;
   bool get isShuffle => _queueManager.isShuffle;
   CaviaRepeatMode get repeatMode => _queueManager.repeatMode;
@@ -217,22 +220,26 @@ class PlaybackController extends ChangeNotifier {
   bool get isQueueSheetOpen => _isQueueSheetOpen;
   bool get isLyricsOpen => _isLyricsOpen;
 
-  // Interactions
+  // ---------------------------------------------------------------------
+  // Basics
+  // ---------------------------------------------------------------------
+
   void play() async {
     if (isPlaying) return;
+    if (_currentSong == null) {
+      _lastErrorMessage = 'Nothing is queued yet. Pick a song to start.';
+      notifyListeners();
+      return;
+    }
     _lastErrorMessage = null;
-    _state = PlaybackMachineState.playing;
     notifyListeners();
-    _persistQueue();
     await audioEngine.play();
   }
 
   void pause() async {
     if (!isPlaying) return;
-    _state = PlaybackMachineState.paused;
-    notifyListeners();
-    _persistQueue();
     await audioEngine.pause();
+    notifyListeners();
   }
 
   void togglePlayPause() {
@@ -253,7 +260,33 @@ class PlaybackController extends ChangeNotifier {
     await audioEngine.seek(targetDuration);
   }
 
+  Future<void> setPlaybackSpeed(double speed) async {
+    final clamped = speed.clamp(0.25, 4.0);
+    _playbackSpeed = clamped;
+    await audioEngine.setSpeed(clamped);
+    _persistQueue();
+    notifyListeners();
+  }
+
+  /// Resolves a real playable source for offline-caching requests. Returned
+  /// to the storage layer as-is: no source rewriting or synthetic URLs.
+  Future<Result<PlaybackSource, PlaybackFailure>> resolveSourceForCaching(
+    Track track,
+  ) async {
+    final resolver = trackResolver;
+    if (resolver == null) {
+      return Result.failure(PlaybackFailure(
+        type: PlaybackFailureType.playbackUnsupported,
+        internalMessage: 'No audio resolver is available in this build.',
+        trackId: track.id,
+      ));
+    }
+    return resolver.resolve(track);
+  }
+
   /// Plays [song] immediately with request token race-condition protection.
+  /// [song] is a full [Track] (typedef [Song]); no provider identity is
+  /// fabricated here — whatever the data source built is trusted.
   void playNow(Song song) async {
     final currentEpoch = ++_requestEpoch;
     _currentSong = song;
@@ -268,22 +301,17 @@ class PlaybackController extends ChangeNotifier {
     _updateMediaSessionMetadata();
     _persistQueue();
 
-    final domainTrack = Track(
-      id: song.id,
-      providerId: song.id.startsWith('yt_') ? 'youtube_music' : 'local',
-      providerTrackId: song.id.startsWith('yt_') ? song.id.replaceFirst('yt_', '') : song.id,
-      title: song.title,
-      artist: song.artist,
-      album: song.album,
-      duration: song.duration,
-      artworkAsset: song.artworkAsset,
-      sourceAttribution: song.id.startsWith('yt_') ? 'YouTube Music' : 'Cavia Music',
-      dateAdded: DateTime.now(),
-    );
+    final resolver = trackResolver;
+    if (resolver == null) {
+      _lastErrorMessage = 'No audio resolver is available in this build.';
+      _state = PlaybackMachineState.failed;
+      notifyListeners();
+      return;
+    }
 
-    final resolveResult = await trackResolver.resolve(domainTrack);
+    final resolveResult = await resolver.resolve(song);
 
-    // Stale request protection: if a newer request was dispatched while resolving, discard this
+    // Stale request protection: a newer request won while we resolved.
     if (currentEpoch != _requestEpoch || _isDisposed) {
       return;
     }
@@ -303,10 +331,11 @@ class PlaybackController extends ChangeNotifier {
 
       await audioEngine.load(source);
       if (currentEpoch != _requestEpoch || _isDisposed) return;
+      await audioEngine.setSpeed(_playbackSpeed);
       await audioEngine.play();
 
       _state = PlaybackMachineState.playing;
-      trackRepository?.updatePlayStats(song.id, Duration.zero);
+      _updateMediaSessionState();
       notifyListeners();
     } catch (e) {
       if (currentEpoch == _requestEpoch && !_isDisposed) {
@@ -416,17 +445,21 @@ class PlaybackController extends ChangeNotifier {
         ),
     ];
 
-    repo.saveQueue(PlaybackQueueState(
+    unawaited(repo.saveQueue(PlaybackQueueState(
       items: items,
       currentIndex: _queueManager.currentIndex,
       repeatMode: _queueManager.repeatMode,
       isShuffle: _queueManager.isShuffle,
       position: _currentPosition,
       isPlaying: isPlaying,
-    ));
+      speed: _playbackSpeed,
+    )));
   }
 
-  // Modals & Panels
+  // ---------------------------------------------------------------------
+  // Modals & panels
+  // ---------------------------------------------------------------------
+
   void setFullPlayerExpanded(bool expanded) {
     _isFullPlayerExpanded = expanded;
     notifyListeners();
@@ -463,35 +496,63 @@ class PlaybackController extends ChangeNotifier {
   }
 }
 
-/// Simple fallback track repository for non-database standalone runs
-class _FallbackTrackRepo implements TrackRepository {
-  @override
-  Future<Result<List<Track>, AppError>> getAllTracks({String? profileId}) async =>
-      const Result.success([]);
+/// Minimal engine used only inside `FLUTTER_TEST` environments where spinning
+/// up real audio hardware would be wrong. It performs no fabricated playback:
+/// work is dispatched but produces no sound, mirroring headless CI behavior.
+class _NoOpEngine implements AudioEngine {
+  final _positionController = StreamController<Duration>.broadcast();
+  final _durationController = StreamController<Duration?>.broadcast();
+  final _bufferedController = StreamController<Duration>.broadcast();
+  final _stateController =
+      StreamController<PlaybackMachineState>.broadcast();
 
   @override
-  Stream<List<Track>> watchTracks({String? profileId}) => const Stream.empty();
+  Stream<Duration> get positionStream => _positionController.stream;
+  @override
+  Stream<Duration?> get durationStream => _durationController.stream;
+  @override
+  Stream<Duration> get bufferedPositionStream => _bufferedController.stream;
+  @override
+  Stream<PlaybackMachineState> get stateStream => _stateController.stream;
 
   @override
-  Stream<List<Track>> watchLikedTracks({String? profileId}) => const Stream.empty();
+  PlaybackMachineState get currentState => PlaybackMachineState.idle;
+  @override
+  Duration get currentPosition => Duration.zero;
+  @override
+  Duration get totalDuration => Duration.zero;
+  @override
+  double get volume => 1.0;
+  @override
+  double get speed => 1.0;
 
   @override
-  Future<Result<Track, AppError>> getTrackById(String id, {String? profileId}) async =>
-      const Result.failure(NotFoundError('Fallback'));
+  Future<void> init() async {}
+  @override
+  Future<void> load(PlaybackSource source) => Future.value();
+  @override
+  Future<void> play() async {
+    _stateController.add(PlaybackMachineState.playing);
+  }
 
   @override
-  Future<Result<bool, AppError>> isTrackLiked(String trackId, {String? profileId}) async =>
-      const Result.success(false);
+  Future<void> pause() async {
+    _stateController.add(PlaybackMachineState.paused);
+  }
 
   @override
-  Future<Result<bool, AppError>> toggleLike(String trackId, {String? profileId}) async =>
-      const Result.success(false);
+  Future<void> seek(Duration position) => Future.value();
+  @override
+  Future<void> setVolume(double volume) => Future.value();
+  @override
+  Future<void> setSpeed(double speed) => Future.value();
+  @override
+  Future<void> stop() async {
+    _stateController.add(PlaybackMachineState.idle);
+  }
 
   @override
-  Future<Result<void, AppError>> updatePlayStats(String trackId, Duration position, {String? profileId}) async =>
-      const Result.success(null);
-
-  @override
-  Future<Result<void, AppError>> insertTrack(Track track, {String? profileId}) async =>
-      const Result.success(null);
+  Future<void> dispose() async {
+    await _stateController.close();
+  }
 }

@@ -38,6 +38,7 @@ class PlaybackQueueState {
   final bool isShuffle;
   final Duration position;
   final bool isPlaying;
+  final double speed;
 
   const PlaybackQueueState({
     this.items = const [],
@@ -46,6 +47,7 @@ class PlaybackQueueState {
     this.isShuffle = false,
     this.position = Duration.zero,
     this.isPlaying = false,
+    this.speed = 1.0,
   });
 
   Track? get currentTrack {
@@ -62,6 +64,7 @@ class PlaybackQueueState {
     bool? isShuffle,
     Duration? position,
     bool? isPlaying,
+    double? speed,
   }) {
     return PlaybackQueueState(
       items: items ?? this.items,
@@ -70,6 +73,7 @@ class PlaybackQueueState {
       isShuffle: isShuffle ?? this.isShuffle,
       position: position ?? this.position,
       isPlaying: isPlaying ?? this.isPlaying,
+      speed: speed ?? this.speed,
     );
   }
 
@@ -80,5 +84,6 @@ class PlaybackQueueState {
         isShuffle: false,
         position: Duration.zero,
         isPlaying: false,
+        speed: 1.0,
       );
 }

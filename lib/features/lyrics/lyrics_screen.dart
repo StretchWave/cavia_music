@@ -47,6 +47,16 @@ class _LyricsScreenState extends State<LyricsScreen> {
       _fetchedLyrics = fetched ?? [];
       _isLoadingLyrics = false;
     });
+
+    // Cache the successful fetch into the local database so the next session
+    // reads lyrics from storage instead of the provider again.
+    if (fetched != null && fetched.isNotEmpty) {
+      final library = AppStateScope.libraryOf(context);
+      final repo = library.trackRepository;
+      if (repo != null) {
+        await repo.saveLyrics(song.id, fetched);
+      }
+    }
   }
 
   void _scrollToActive(int index, int totalLines) {
@@ -83,6 +93,24 @@ class _LyricsScreenState extends State<LyricsScreen> {
       listenable: playback,
       builder: (context, _) {
         final song = playback.currentSong;
+        if (song == null) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: Stack(
+              children: [
+                const JapaneseSceneryBackground(imageAsset: '', opacity: 0.2),
+                SafeArea(
+                  child: Center(
+                    child: Text(
+                      'No lyrics — start a song first',
+                      style: CaviaTypography.songTitle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
         if (_loadedSongId != song.id) {
           _loadedSongId = song.id;
           _fetchedLyrics = null;

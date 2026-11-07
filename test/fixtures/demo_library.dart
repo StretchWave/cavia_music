@@ -1,4 +1,9 @@
-import '../models/music_models.dart';
+// Test fixture: the demonstration catalog that used to ship in `lib/`.
+// Production code must never import this file.
+import 'package:cavia_music/core/domain/models/album.dart';
+import 'package:cavia_music/core/domain/models/artist.dart';
+import 'package:cavia_music/core/domain/models/playlist.dart';
+import 'package:cavia_music/core/domain/models/track.dart';
 
 class MockLibrary {
   MockLibrary._();

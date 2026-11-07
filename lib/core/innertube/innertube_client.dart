@@ -320,12 +320,37 @@ class InnerTubeClient {
             title: title,
             artist: artist,
             album: album,
-            duration: const Duration(minutes: 3, seconds: 30),
+            duration: _extractDuration(renderer) ?? Duration.zero,
             artworkUrl: artworkUrl,
           ));
         }
       }
     } catch (_) {}
+  }
+
+  /// Extracts the track duration from the list item's flex column runs
+  /// (usually rendered as "m:ss" in the last column). Returns null when the
+  /// response provides none — no fabricated duration is ever substituted.
+  Duration? _extractDuration(Map renderer) {
+    try {
+      final flexColumns = renderer['flexColumns'] as List?;
+      if (flexColumns == null) return null;
+      final pattern = RegExp(r'^(\d{1,2}):(\d{2})$');
+      for (final col in flexColumns) {
+        final runs = col['musicResponsiveListItemFlexColumnRenderer']?['text']?['runs'] as List?;
+        if (runs == null) continue;
+        for (final run in runs) {
+          final text = (run['text'] as String? ?? '').trim();
+          final match = pattern.firstMatch(text);
+          if (match != null) {
+            final minutes = int.parse(match.group(1)!);
+            final seconds = int.parse(match.group(2)!);
+            return Duration(minutes: minutes, seconds: seconds);
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   String? _extractVideoIdFromFlexColumns(Map renderer) {

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import 'package:uuid/uuid.dart';
+
 import 'theme/cavia_theme.dart';
+import '../core/config/cavia_config.dart';
 import '../core/data/database/cavia_database.dart';
 import '../core/data/repositories/local_track_repository.dart';
 import '../core/data/repositories/local_playlist_repository.dart';
@@ -8,7 +13,6 @@ import '../core/data/repositories/local_settings_repository.dart';
 import '../core/data/repositories/local_search_repository.dart';
 import '../core/data/repositories/local_sync_repository.dart';
 import '../core/data/repositories/supabase_auth_repository.dart';
-import '../core/data/seeds/initial_data_seeder.dart';
 import '../core/domain/repositories/track_repository.dart';
 import '../core/domain/repositories/playlist_repository.dart';
 import '../core/domain/repositories/queue_repository.dart';
@@ -45,6 +49,7 @@ class CaviaApp extends StatefulWidget {
   final AudioEngine? audioEngine;
   final TrackResolver? trackResolver;
   final CaviaAudioHandler? audioHandler;
+  final String? deviceId;
 
   const CaviaApp({
     super.key,
@@ -59,7 +64,49 @@ class CaviaApp extends StatefulWidget {
     this.audioEngine,
     this.trackResolver,
     this.audioHandler,
+    this.deviceId,
   });
+
+  /// True once [create] completed a Supabase initialization in this process.
+  static bool supabaseReady = false;
+
+  /// Async production bootstrap: opens the real database, restores/creates the
+  /// stable device id, initializes Supabase when configured, and prepares the
+  /// audio handler. Runs once from `main()`; tests construct [CaviaApp] by
+  /// injecting their own dependencies through the plain constructor instead.
+  static Future<CaviaApp> create() async {
+    if (CaviaConfig.supabaseConfigured) {
+      // Re-initialization is a logged no-op in supabase_flutter.
+      await sb.Supabase.initialize(
+        url: CaviaConfig.supabaseUrl,
+        publishableKey: CaviaConfig.supabaseAnonKey,
+      );
+      supabaseReady = true;
+    }
+
+    return CaviaApp(
+      audioHandler: await _ensureAudioHandler(),
+    );
+  }
+
+  /// The OS media session is initialized only when the platform supports it.
+  /// On unsupported platforms (e.g. headless CI) an in-process handler keeps
+  /// on-device playback functional without claiming OS integration.
+  static Future<CaviaAudioHandler> _ensureAudioHandler() async {
+    const config = AudioServiceConfig(
+      androidNotificationChannelId: 'com.stretchwave.cavia_music.playback',
+      androidNotificationChannelName: 'Cavia Music playback',
+      androidNotificationOngoing: true,
+    );
+    try {
+      return await AudioService.init(
+        builder: () => CaviaAudioHandler(),
+        config: config,
+      );
+    } catch (_) {
+      return CaviaAudioHandler();
+    }
+  }
 
   @override
   State<CaviaApp> createState() => _CaviaAppState();
@@ -68,15 +115,24 @@ class CaviaApp extends StatefulWidget {
 class _CaviaAppState extends State<CaviaApp> {
   CaviaDatabase? _db;
   bool _ownsDb = false;
+  String _deviceId = 'device-local';
 
   late final PlaybackController _playbackController;
   late final LibraryController _libraryController;
   late final SettingsController _settingsController;
 
+  bool _controllersReady = false;
+
   @override
   void initState() {
     super.initState();
+    _bootstrap();
+  }
 
+  Future<void> _bootstrap() async {
+    // -------------------------------------------------------------------
+    // 1. Database (or injected repositories) + stable device identity
+    // -------------------------------------------------------------------
     CaviaDatabase? db = widget.database;
     if (db == null &&
         widget.trackRepository == null &&
@@ -91,6 +147,12 @@ class _CaviaAppState extends State<CaviaApp> {
     }
     _db = db;
 
+    if (widget.deviceId != null) {
+      _deviceId = widget.deviceId!;
+    } else if (db != null) {
+      _deviceId = await _resolveDeviceId(db);
+    }
+
     SyncRepository? syncRepo = widget.syncRepository;
     AuthRepository? authRepo = widget.authRepository;
     TrackRepository? trackRepo = widget.trackRepository;
@@ -100,18 +162,22 @@ class _CaviaAppState extends State<CaviaApp> {
     SearchRepository? searchRepo = widget.searchRepository;
 
     if (db != null) {
-      syncRepo ??= LocalSyncRepository(db: db);
-      authRepo ??= SupabaseAuthRepository();
-      trackRepo ??= LocalTrackRepository(db, syncRepository: syncRepo);
-      playlistRepo ??= LocalPlaylistRepository(db, syncRepository: syncRepo);
-      queueRepo ??= LocalQueueRepository(db);
-      settingsRepo ??= LocalSettingsRepository(db, syncRepository: syncRepo);
-      searchRepo ??= LocalSearchRepository(db);
+      final sbClient = CaviaConfig.supabaseConfigured && CaviaApp.supabaseReady
+          ? sb.Supabase.instance.client
+          : null;
 
-      InitialDataSeeder(db).seedIfNeeded();
-      authRepo.restoreSession();
+      syncRepo ??= LocalSyncRepository(db: db, client: sbClient, deviceId: _deviceId);
+      authRepo ??= SupabaseAuthRepository(client: sbClient);
+      trackRepo ??= LocalTrackRepository(db, syncRepository: syncRepo, deviceId: _deviceId);
+      playlistRepo ??= LocalPlaylistRepository(db, syncRepository: syncRepo, deviceId: _deviceId);
+      queueRepo ??= LocalQueueRepository(db);
+      settingsRepo ??= LocalSettingsRepository(db, syncRepository: syncRepo, deviceId: _deviceId);
+      searchRepo ??= LocalSearchRepository(db);
     }
 
+    // -------------------------------------------------------------------
+    // 2. Providers, coordinator, resolver
+    // -------------------------------------------------------------------
     final providerRegistry = ProviderRegistry(
       initialProviders: [
         if (trackRepo != null) LocalAudioProvider(trackRepository: trackRepo),
@@ -130,7 +196,7 @@ class _CaviaAppState extends State<CaviaApp> {
         providerRegistry: providerRegistry,
         settingsRepository: settingsRepo,
         trackRepository: trackRepo,
-        getActivePlayingTrackId: () => _playbackController.currentSong.id,
+        getActivePlayingTrackId: () => _playbackController.currentSong?.id,
       );
     }
 
@@ -143,11 +209,13 @@ class _CaviaAppState extends State<CaviaApp> {
               )
             : null);
 
+    // -------------------------------------------------------------------
+    // 3. Controllers
+    // -------------------------------------------------------------------
     _playbackController = PlaybackController(
       audioEngine: widget.audioEngine,
       trackResolver: resolver,
       queueRepository: queueRepo,
-      trackRepository: trackRepo,
       audioHandler: widget.audioHandler,
     );
 
@@ -163,14 +231,41 @@ class _CaviaAppState extends State<CaviaApp> {
       syncRepository: syncRepo,
       cacheManager: cacheMgr,
       cachingCoordinator: cachingCoord,
+      providerRegistry: providerRegistry,
     );
+
+    // Restore an existing Supabase session when one is stored.
+    await authRepo?.restoreSession();
+
+    if (mounted) {
+      setState(() => _controllersReady = true);
+    }
+  }
+
+  Future<String> _resolveDeviceId(CaviaDatabase db) async {
+    final row = await (db.select(db.dbPreferences)
+          ..where((t) => t.key.equals('deviceId')))
+        .getSingleOrNull();
+    if (row != null && row.value.isNotEmpty) return row.value;
+
+    final id = const Uuid().v4();
+    await db.into(db.dbPreferences).insertOnConflictUpdate(
+          DbPreferencesCompanion.insert(
+            key: 'deviceId',
+            value: id,
+            updatedAt: DateTime.timestamp(),
+          ),
+        );
+    return id;
   }
 
   @override
   void dispose() {
-    _playbackController.dispose();
-    _libraryController.dispose();
-    _settingsController.dispose();
+    if (_controllersReady) {
+      _playbackController.dispose();
+      _libraryController.dispose();
+      _settingsController.dispose();
+    }
     if (_ownsDb) {
       _db?.close();
     }
@@ -179,6 +274,14 @@ class _CaviaAppState extends State<CaviaApp> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_controllersReady) {
+      return const MaterialApp(
+        title: 'Cavia Music',
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
     return AppStateScope(
       playback: _playbackController,
       library: _libraryController,

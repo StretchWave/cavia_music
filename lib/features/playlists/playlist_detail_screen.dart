@@ -33,17 +33,22 @@ class PlaylistDetailScreen extends StatelessWidget {
     final library = AppStateScope.libraryOf(context);
     final playback = AppStateScope.playbackOf(context);
 
-    return ListenableBuilder(
-      listenable: Listenable.merge([library, playback]),
-      builder: (context, _) {
-        final playlistList = library.playlists.where((p) => p.id == playlistId);
-        if (playlistList.isEmpty) {
-          return const Scaffold(
-            body: Center(child: Text('Playlist not found')),
-          );
-        }
-        final playlist = playlistList.first;
-        final songs = playlist.songs;
+    return StreamBuilder<List<Song>>(
+      stream: library.watchPlaylistSongs(playlistId),
+      initialData: const <Song>[],
+      builder: (context, songsSnapshot) {
+        final songs = songsSnapshot.data ?? const <Song>[];
+
+        return ListenableBuilder(
+          listenable: Listenable.merge([library, playback]),
+          builder: (context, _) {
+            final playlistList = library.playlists.where((p) => p.id == playlistId);
+            if (playlistList.isEmpty) {
+              return const Scaffold(
+                body: Center(child: Text('Playlist not found')),
+              );
+            }
+            final playlist = playlistList.first;
 
         return Scaffold(
           backgroundColor: Colors.transparent,
@@ -195,11 +200,24 @@ class PlaylistDetailScreen extends StatelessWidget {
                   // Track list with Reorder
                   SliverPadding(
                     padding: const EdgeInsets.only(left: 16, right: 16, bottom: 120),
-                    sliver: SliverList(
+                    sliver: songs.isEmpty
+                        ? const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 48),
+                              child: Center(
+                                child: Text(
+                                  'Playlist is empty. Add some music.',
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          )
+                        : SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final song = songs[index];
-                          final isCurrent = playback.currentSong.id == song.id;
+                          final isCurrent =
+                              playback.currentSong?.id == song.id;
 
                           return Dismissible(
                             key: ValueKey('${playlist.id}_${song.id}'),
@@ -216,9 +234,20 @@ class PlaylistDetailScreen extends StatelessWidget {
                                 color: CaviaColors.vermilionBright,
                               ),
                             ),
-                            onDismissed: (_) {
-                              library.removeSongFromPlaylist(playlist.id, song.id);
-                              CaviaToast.show(context, 'Removed from playlist');
+                            onDismissed: (_) async {
+                              final removed = await library
+                                  .removePlaylistEntry(
+                                    playlist.id,
+                                    trackId: song.id,
+                                  );
+                              if (context.mounted) {
+                                CaviaToast.show(
+                                  context,
+                                  removed
+                                      ? 'Removed from playlist'
+                                      : "Couldn't remove the entry",
+                                );
+                              }
                             },
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(
@@ -294,6 +323,8 @@ class PlaylistDetailScreen extends StatelessWidget {
               ),
             ],
           ),
+        );
+          },
         );
       },
     );

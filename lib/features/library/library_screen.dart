@@ -8,6 +8,7 @@ import '../../core/components/artwork_view.dart';
 import '../../core/state/app_state_scope.dart';
 import '../playlists/playlist_detail_screen.dart';
 import '../playlists/create_playlist_dialog.dart';
+import 'liked_songs_screen.dart';
 import '../albums/album_detail_screen.dart';
 import '../artists/artist_detail_screen.dart';
 
@@ -89,6 +90,32 @@ class LibraryScreen extends StatelessWidget {
                       ),
                     ),
 
+                    // Honest empty state: the library is backed by real data
+                    // only; guiding copy replaces fabricated demo content.
+                    if (library.songs.isEmpty && library.playlists.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(32, 8, 32, 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Your library is empty.',
+                                style: CaviaTypography.songTitle,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Search & play streaming tracks to build history, '
+                                'import a Spotify playlist, or like songs to fill '
+                                'this shelf. Local music added through the import '
+                                'engine also appears here automatically.',
+                                style: CaviaTypography.caption,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
                     // 2x2 Glass Shortcuts Grid (Liked, Playlists, Albums, Artists)
                     SliverToBoxAdapter(
                       child: Padding(
@@ -106,16 +133,12 @@ class LibraryScreen extends StatelessWidget {
                                     surfaceColor: CaviaColors.vermilion.withValues(alpha: 0.14),
                                     borderColor: CaviaColors.vermilionBright.withValues(alpha: 0.6),
                                     onTap: () {
-                                      if (library.playlists.isNotEmpty) {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => PlaylistDetailScreen(
-                                              playlistId: library.playlists.first.id,
-                                            ),
-                                          ),
-                                        );
-                                      }
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const LikedSongsScreen(),
+                                        ),
+                                      );
                                     },
                                     child: Center(
                                       child: Row(
@@ -375,7 +398,7 @@ class LibraryScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      '${pl.songs.length} tracks',
+                                      '${pl.trackCount} tracks',
                                       style: CaviaTypography.caption,
                                     ),
                                   ],

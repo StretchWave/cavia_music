@@ -6,6 +6,7 @@ import '../../app/theme/cavia_glass.dart';
 import '../../core/components/glass_container.dart';
 import '../../core/components/japanese_scenery_background.dart';
 import '../../core/components/artwork_view.dart';
+import '../../core/config/cavia_config.dart';
 import '../../core/state/library_controller.dart';
 import '../../core/state/app_state_scope.dart';
 import '../../core/spotify/spotify_models.dart';
@@ -13,13 +14,7 @@ import '../../core/spotify/spotify_oauth_service.dart';
 import '../../core/spotify/spotify_playlist_client.dart';
 import '../../core/spotify/spotify_import_coordinator.dart';
 import '../../core/spotify/spotify_url_parser.dart';
-import '../../core/domain/result/result.dart';
-import '../../core/domain/result/app_error.dart';
-import '../../core/domain/models/track.dart';
 import '../../core/domain/models/playlist.dart';
-import '../../core/domain/models/playlist_entry.dart';
-import '../../core/domain/repositories/track_repository.dart';
-import '../../core/domain/repositories/playlist_repository.dart';
 import '../playlists/playlist_detail_screen.dart';
 
 enum ImportState {
@@ -51,116 +46,55 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
   bool _skipDuplicates = true;
   bool _skipUnmatched = false;
 
-  late final SpotifyImportCoordinator _coordinator;
+  SpotifyImportCoordinator? _coordinator;
+  String? _setupError;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (widget.coordinator != null) {
-      _coordinator = widget.coordinator!;
-    } else {
-      final library = AppStateScope.libraryOf(context);
-      final oauth = SpotifyOAuthService();
-      final client = SpotifyPlaylistClient(oAuthService: oauth);
-      final tRepo = library.trackRepository ?? _FallbackTrackRepo();
-      final pRepo = library.playlistRepository ?? _FallbackPlaylistRepo();
-      _coordinator = SpotifyImportCoordinator(
-        client: client,
-        trackRepository: tRepo,
-        playlistRepository: pRepo,
-      );
+    if (widget.coordinator != null || _coordinator != null) return;
+    _setupCoordinator();
+  }
+
+  void _setupCoordinator() {
+    final library = AppStateScope.libraryOf(context);
+    final tRepo = library.trackRepository;
+    final pRepo = library.playlistRepository;
+
+    if (tRepo == null || pRepo == null) {
+      setState(() {
+        _setupError =
+            'The import engine is not connected to your library in this '
+            'session. Reopen Cavia Music and try again.';
+      });
+      return;
     }
+
+    final oauth = SpotifyOAuthService();
+    final client = SpotifyPlaylistClient(oAuthService: oauth);
+
+    if (!CaviaConfig.spotifyConfigured) {
+      if (mounted) {
+        setState(() {
+          _setupError =
+              'Spotify import is not configured on this build. Add '
+              'CAVIA_SPOTIFY_CLIENT_ID to the app configuration first.';
+        });
+      }
+      return;
+    }
+
+    _coordinator = SpotifyImportCoordinator(
+      client: client,
+      trackRepository: tRepo,
+      playlistRepository: pRepo,
+    );
   }
 
   @override
   void dispose() {
     _urlController.dispose();
     super.dispose();
-  }
-
-  void _loadSamplePreview() {
-    final sampleMeta = SpotifyPlaylistMetadata(
-      id: '37i9dQZF1DXdbXrPNafg9d',
-      name: 'Tokyo Electronic Sanctuary',
-      description: 'Atmospheric electronic & future beats from Tokyo.',
-      artworkUrl: 'assets/images/cover_zenith.jpg',
-      ownerName: 'Spotify Curators',
-      totalTracks: 5,
-      isCollaborative: false,
-      isPublic: true,
-    );
-
-    final sampleTracks = [
-      const SpotifyTrackItem(
-        id: 'sp_1',
-        name: 'Afterglow',
-        artist: 'Luna Caine',
-        album: 'Nocturne Whispers',
-        duration: Duration(minutes: 4, seconds: 9),
-        artworkUrl: 'assets/images/cover_afterglow.jpg',
-        isPlayable: true,
-      ),
-      const SpotifyTrackItem(
-        id: 'sp_2',
-        name: 'Zenith',
-        artist: 'Kenshi Yonezu',
-        album: 'Floating Realm',
-        duration: Duration(minutes: 3, seconds: 45),
-        artworkUrl: 'assets/images/cover_zenith.jpg',
-        isPlayable: true,
-      ),
-      const SpotifyTrackItem(
-        id: 'sp_3',
-        name: 'Shinjuku Neon',
-        artist: 'Tokyo Electric',
-        album: 'Metropolis Nights',
-        duration: Duration(minutes: 3, seconds: 20),
-        artworkUrl: 'assets/images/cover_shrine.jpg',
-        isPlayable: true,
-      ),
-      const SpotifyTrackItem(
-        id: 'sp_4',
-        name: 'Misty Bamboo',
-        artist: 'Ryuichi Sakamoto',
-        album: 'Forest Solitude',
-        duration: Duration(minutes: 4, seconds: 15),
-        artworkUrl: 'assets/images/cover_mist_mountain.jpg',
-        isPlayable: true,
-      ),
-      const SpotifyTrackItem(
-        id: 'sp_5',
-        name: 'Torii Lake Echoes',
-        artist: 'Nujabes',
-        album: 'Spiritual State',
-        duration: Duration(minutes: 5, seconds: 2),
-        artworkUrl: 'assets/images/cover_crimson_sun.jpg',
-        isPlayable: true,
-      ),
-    ];
-
-    final matches = sampleTracks.map((t) {
-      final isMatch = t.id == 'sp_1' || t.id == 'sp_2';
-      return TrackMatchResult(
-        spotifyTrack: t,
-        matchedTrackId: isMatch ? (t.id == 'sp_1' ? 'song_1' : 'song_2') : null,
-        confidence: isMatch ? MatchConfidence.highConfidence : MatchConfidence.unmatched,
-        matchReason: isMatch ? 'Sample metadata match' : 'No local match',
-      );
-    }).toList();
-
-    setState(() {
-      _preview = ImportPreview(
-        metadata: sampleMeta,
-        tracks: sampleTracks,
-        matches: matches,
-        matchedCount: 2,
-        unmatchedCount: 3,
-        duplicateCount: 0,
-        unsupportedCount: 0,
-      );
-      _state = ImportState.previewReady;
-      _errorMessage = null;
-    });
   }
 
   void _connectSpotifyBrowser() async {
@@ -187,7 +121,7 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
       _errorMessage = null;
     });
 
-    final previewResult = await _coordinator.loadPreview(inputUrl: text);
+    final previewResult = await _coordinator!.loadPreview(inputUrl: text);
 
     if (!mounted) return;
 
@@ -220,7 +154,7 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
       skipUnmatched: _skipUnmatched,
     );
 
-    final importResult = await _coordinator.executeImport(
+    final importResult = await _coordinator!.executeImport(
       preview: _preview!,
       options: options,
       onProgress: (imported, total) {
@@ -285,13 +219,42 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _buildWorkflowContent(context, library),
+                    child: _setupError != null
+                        ? _buildNotConfiguredState()
+                        : _buildWorkflowContent(context, library),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotConfiguredState() {
+    return Center(
+      child: GlassContainer(
+        radius: CaviaGlass.radiusCard,
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.settings_applications_rounded,
+                size: 44, color: CaviaColors.textSilver),
+            const SizedBox(height: 14),
+            Text(
+              'Import unavailable',
+              style: CaviaTypography.display.copyWith(fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _setupError ?? '',
+              style: CaviaTypography.body,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -360,7 +323,9 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
         return _buildCompletedState(library);
 
       case ImportState.failed:
-        final isAuthIssue = _errorMessage?.contains('Spotify') == true || _errorMessage?.contains('Reconnect') == true;
+        final isAuthIssue = _errorMessage?.contains('Spotify') == true ||
+            _errorMessage?.contains('Reconnect') == true ||
+            _errorMessage?.contains('auth') == true;
 
         return Center(
           child: GlassContainer(
@@ -390,15 +355,6 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
                     onPressed: _connectSpotifyBrowser,
                   ),
                   const SizedBox(height: 8),
-                  OutlinedButton(
-                    onPressed: _loadSamplePreview,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: CaviaColors.textIvory,
-                      side: const BorderSide(color: CaviaColors.glassBorder),
-                    ),
-                    child: const Text('Preview Sample Playlist'),
-                  ),
-                  const SizedBox(height: 4),
                 ],
                 TextButton(
                   onPressed: () => setState(() => _state = ImportState.initial),
@@ -451,34 +407,6 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
                     borderSide: const BorderSide(color: CaviaColors.vermilionBright),
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  ActionChip(
-                    label: const Text('Use Sample Tokyo Playlist URL'),
-                    labelStyle: const TextStyle(color: CaviaColors.textSilver, fontSize: 12),
-                    backgroundColor: CaviaColors.glassSurface,
-                    side: const BorderSide(color: CaviaColors.glassBorderSubtle),
-                    onPressed: () {
-                      _urlController.text = 'https://open.spotify.com/playlist/37i9dQZF1DXdbXrPNafg9d';
-                      setState(() {
-                        _state = ImportState.initial;
-                        _errorMessage = null;
-                      });
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.flash_on_rounded, size: 14, color: CaviaColors.vermilionBright),
-                    label: const Text('Instant Demo Preview'),
-                    labelStyle: const TextStyle(color: CaviaColors.vermilionBright, fontSize: 12, fontWeight: FontWeight.w600),
-                    backgroundColor: CaviaColors.glassSurface,
-                    side: BorderSide(color: CaviaColors.vermilionBright.withValues(alpha: 0.5)),
-                    onPressed: _loadSamplePreview,
-                  ),
-                ],
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -641,6 +569,14 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
     final summary = _summary;
     final message = summary?.userMessage ?? 'Import completed.';
     final unmatched = summary?.unmatchedMessage;
+    final createdPlaylistName = summary?.playlistName;
+
+    Playlist? createdPlaylist;
+    if (createdPlaylistName != null) {
+      final matches = library.playlists.where((p) => p.name == createdPlaylistName);
+      if (matches.isNotEmpty) createdPlaylist = matches.first;
+    }
+    final canNavigate = createdPlaylist != null;
 
     return Center(
       child: GlassContainer(
@@ -675,28 +611,31 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
             ],
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                final created = library.playlists.firstWhere(
-                  (p) => p.name == summary?.playlistName,
-                  orElse: () => library.playlists.first,
-                );
-
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => PlaylistDetailScreen(playlistId: created.id),
-                  ),
-                );
-              },
+              onPressed: canNavigate
+                  ? () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              PlaylistDetailScreen(playlistId: createdPlaylist!.id),
+                        ),
+                      );
+                    }
+                  : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: CaviaColors.vermilion,
                 foregroundColor: CaviaColors.textIvory,
+                disabledBackgroundColor: CaviaColors.glassSurface,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: const Text('View Imported Playlist'),
+              child: Text(
+                canNavigate
+                    ? 'View Imported Playlist'
+                    : 'The playlist list will appear shortly',
+              ),
             ),
           ],
         ),
@@ -704,96 +643,3 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
     );
   }
 }
-
-class _FallbackTrackRepo implements TrackRepository {
-  @override
-  Future<Result<List<Track>, AppError>> getAllTracks({String? profileId}) async =>
-      const Result.success([]);
-  @override
-  Stream<List<Track>> watchTracks({String? profileId}) => const Stream.empty();
-  @override
-  Stream<List<Track>> watchLikedTracks({String? profileId}) => const Stream.empty();
-  @override
-  Future<Result<Track, AppError>> getTrackById(String id, {String? profileId}) async =>
-      const Result.failure(NotFoundError('Fallback'));
-  @override
-  Future<Result<bool, AppError>> isTrackLiked(String trackId, {String? profileId}) async =>
-      const Result.success(false);
-  @override
-  Future<Result<bool, AppError>> toggleLike(String trackId, {String? profileId}) async =>
-      const Result.success(false);
-  @override
-  Future<Result<void, AppError>> updatePlayStats(String trackId, Duration position, {String? profileId}) async =>
-      const Result.success(null);
-  @override
-  Future<Result<void, AppError>> insertTrack(Track track, {String? profileId}) async =>
-      const Result.success(null);
-}
-
-class _FallbackPlaylistRepo implements PlaylistRepository {
-  @override
-  Stream<List<Playlist>> watchPlaylists({String? profileId}) => const Stream.empty();
-  @override
-  Future<Result<List<Playlist>, AppError>> getAllPlaylists({String? profileId}) async =>
-      const Result.success([]);
-  @override
-  Future<Result<Playlist, AppError>> getPlaylistById(String id, {String? profileId}) async =>
-      const Result.failure(NotFoundError('Fallback'));
-  @override
-  Stream<List<PlaylistEntry>> watchPlaylistEntries(String playlistId) => const Stream.empty();
-  @override
-  Future<Result<List<PlaylistEntry>, AppError>> getPlaylistEntries(String playlistId) async =>
-      const Result.success([]);
-  @override
-  Future<Result<Playlist, AppError>> createPlaylist(
-    String name, {
-    String description = '',
-    List<String>? initialTrackIds,
-    String? profileId,
-  }) async =>
-      Result.success(Playlist(
-        id: 'pl_fallback',
-        name: name,
-        description: description,
-        artworkAsset: '',
-        songs: const [],
-        createdAt: DateTime.now(),
-      ));
-  @override
-  Future<Result<void, AppError>> editPlaylist(
-    String playlistId, {
-    String? name,
-    String? description,
-    String? artworkUri,
-  }) async =>
-      const Result.success(null);
-  @override
-  Future<Result<void, AppError>> deletePlaylist(String playlistId) async =>
-      const Result.success(null);
-  @override
-  Future<Result<PlaylistEntry, AppError>> addTrackToPlaylist(
-    String playlistId,
-    String trackId,
-  ) async =>
-      Result.success(PlaylistEntry(
-        id: 'pe_fallback',
-        playlistId: playlistId,
-        trackId: trackId,
-        position: 0,
-        dateAdded: DateTime.now(),
-      ));
-  @override
-  Future<Result<void, AppError>> removeTrackFromPlaylist(
-    String playlistId,
-    String entryId,
-  ) async =>
-      const Result.success(null);
-  @override
-  Future<Result<void, AppError>> reorderPlaylistEntries(
-    String playlistId,
-    int oldPosition,
-    int newPosition,
-  ) async =>
-      const Result.success(null);
-}
-

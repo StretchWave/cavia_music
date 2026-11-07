@@ -171,7 +171,8 @@ class AlbumDetailScreen extends StatelessWidget {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final song = songs[index];
-                          final isCurrent = playback.currentSong.id == song.id;
+                          final isCurrent =
+                              playback.currentSong?.id == song.id;
 
                           return ListTile(
                             contentPadding: const EdgeInsets.symmetric(

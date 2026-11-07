@@ -166,14 +166,8 @@ class CachingCoordinator {
       return const Result.failure(CacheMessages.cachingFailed);
     }
 
-    // 5. Update cached size in settings repository if available
-    final newSize = await cacheManager.calculateTotalCacheSize();
-    if (prefs != null) {
-      await settingsRepository?.updatePreferences(
-        prefs.copyWith(currentCacheSizeBytes: newSize.toDouble()),
-      );
-    }
-
+    // 5. The cache footprint is measured on demand by the settings surface;
+    // no computed size is persisted here.
     return Result.success(entry);
   }
 
@@ -213,17 +207,8 @@ class CachingCoordinator {
     final activeTrackId = getActivePlayingTrackId?.call();
     await cacheManager.clearCache(activeTrackId: activeTrackId);
 
-    // Update settings repository
-    final prefs = await settingsRepository?.getPreferences();
-    if (prefs != null) {
-      final remainingSize = await cacheManager.calculateTotalCacheSize();
-      await settingsRepository?.updatePreferences(
-        prefs.copyWith(currentCacheSizeBytes: remainingSize.toDouble()),
-      );
-    } else {
-      await settingsRepository?.clearCache();
-    }
-
+    // Clearing app-managed cached audio leaves no derived-size record in
+    // preferences; the next storage read measures the file system again.
     return CacheMessages.cacheCleared;
   }
 

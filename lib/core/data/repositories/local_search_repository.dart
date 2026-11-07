@@ -1,4 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
+
 import '../../domain/models/track.dart';
 import '../../domain/models/album.dart';
 import '../../domain/models/artist.dart';
@@ -10,7 +14,7 @@ import '../database/cavia_database.dart';
 
 class LocalSearchRepository implements SearchRepository {
   final CaviaDatabase db;
-  static int _idCounter = 0;
+  final Uuid _uuid = const Uuid();
 
   LocalSearchRepository(this.db);
 
@@ -51,9 +55,13 @@ class LocalSearchRepository implements SearchRepository {
           providerTrackId: t.providerTrackId,
           title: t.title,
           artist: t.artist,
+          artists: t.artistsJson == '[]'
+              ? [t.artist]
+              : List<String>.from((jsonDecode(t.artistsJson) as List).map((e) => e.toString())),
           album: t.album,
           duration: Duration(milliseconds: t.durationMs),
           artworkUri: t.artworkUri,
+          filePath: t.filePath,
           dateAdded: t.dateAdded,
           isLiked: isLiked,
           isCached: t.isCached,
@@ -69,7 +77,7 @@ class LocalSearchRepository implements SearchRepository {
                 id: a.id,
                 title: a.title,
                 artist: a.artist,
-                year: a.year,
+                year: a.year ?? 0,
                 artworkUri: a.artworkUri,
                 isSaved: a.isSaved,
               ))
@@ -137,9 +145,8 @@ class LocalSearchRepository implements SearchRepository {
 
     try {
       final pid = _resolveProfile(profileId);
-      final now = DateTime.now();
-      final seq = ++_idCounter;
-      final id = 'sh_${now.microsecondsSinceEpoch}_$seq';
+      final now = DateTime.now().toUtc();
+      final id = _uuid.v4();
 
       await db.transaction(() async {
         // Prevent duplicates: delete any existing identical query for this profile

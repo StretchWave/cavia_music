@@ -41,6 +41,34 @@ class _FullPlayerViewState extends State<FullPlayerView> {
       listenable: Listenable.merge([playback, library]),
       builder: (context, _) {
         final song = playback.currentSong;
+        if (song == null) {
+          // Honest empty state: the full player only opens with a song, but
+          // keep a graceful collapse path here in case it is shown anyway.
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  JapaneseSceneryBackground(imageAsset: '', opacity: 0.2),
+                  Align(
+                    alignment: Alignment.topLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+                      color: CaviaColors.textIvory,
+                      onPressed: widget.onCollapse,
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      'Nothing is playing yet',
+                      style: CaviaTypography.songTitle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         final isLiked = library.isSongLiked(song.id);
 
         if (_showLyrics) {
@@ -267,15 +295,6 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                         _showQueue = !_showQueue;
                                       });
                                     },
-                                  ),
-                                  const SizedBox(width: 16),
-                                  IconButton(
-                                    icon: const Icon(Icons.graphic_eq_rounded),
-                                    color: playback.isPlaying
-                                        ? CaviaColors.vermilionBright
-                                        : CaviaColors.textSilver,
-                                    tooltip: 'Visualizer',
-                                    onPressed: () {},
                                   ),
                                   const SizedBox(width: 16),
                                   IconButton(
