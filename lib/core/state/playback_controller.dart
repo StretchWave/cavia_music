@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
 import '../domain/models/track.dart';
 import '../domain/models/playback_queue.dart';
+import '../domain/result/result.dart';
 import '../domain/repositories/queue_repository.dart';
 import '../playback/audio_engine.dart';
 import '../playback/just_audio_engine.dart';

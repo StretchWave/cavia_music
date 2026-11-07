@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../app/theme/cavia_colors.dart';
 import '../domain/models/app_preferences.dart';
+import '../domain/models/track.dart';
 import '../domain/models/profile.dart';
 import '../domain/models/sync_state.dart';
 import '../domain/repositories/settings_repository.dart';
@@ -9,6 +11,8 @@ import '../domain/repositories/auth_repository.dart';
 import '../domain/repositories/sync_repository.dart';
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
+import '../playback/playback_failure.dart';
+import '../playback/playback_source.dart';
 import '../storage/cache_manager.dart';
 import '../storage/cache_state.dart';
 import '../storage/caching_coordinator.dart';
@@ -301,7 +305,7 @@ class SettingsController extends ChangeNotifier {
 
       final result = await coord.requestCacheTrack(
         track: track,
-        byteStreamProvider: () => response.asStream(),
+        byteStreamProvider: () => response.stream,
         mimeType: mimeType,
       );
 
