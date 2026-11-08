@@ -5,6 +5,7 @@ import '../../app/theme/cavia_typography.dart';
 import '../../app/theme/cavia_glass.dart';
 import '../../core/components/glass_container.dart';
 import '../../core/components/artwork_view.dart';
+import '../../core/components/toast.dart';
 import '../../core/config/cavia_config.dart';
 import '../../core/state/library_controller.dart';
 import '../../core/state/app_state_scope.dart';
@@ -98,9 +99,27 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
 
   void _connectSpotifyBrowser() async {
     final oauth = SpotifyOAuthService();
-    final uri = await oauth.createAuthorizationUrl();
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    setState(() {
+      _errorMessage = null;
+    });
+
+    if (CaviaConfig.isDesktop) {
+      CaviaToast.show(context, 'Opening browser for Spotify sign-in…');
+      final res = await oauth.authenticateDesktopLoopback();
+      if (!mounted) return;
+      if (res.isSuccess) {
+        CaviaToast.show(context, 'Spotify connected successfully');
+        setState(() {});
+      } else {
+        setState(() {
+          _errorMessage = res.errorOrNull?.userMessage;
+        });
+      }
+    } else {
+      final uri = await oauth.createAuthorizationUrl();
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
     }
   }
 

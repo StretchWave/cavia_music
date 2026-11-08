@@ -185,9 +185,12 @@ class CaviaAppState extends State<CaviaApp> {
       sb.SupabaseClient? sbClient;
       try {
         if (CaviaConfig.supabaseConfigured) {
+          await CaviaApp.initializeSupabaseIfConfigured();
           sbClient = sb.Supabase.instance.client;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Cavia] Cloud client resolution: $e');
+      }
 
       // 4. Assemble repositories
       SyncRepository? syncRepo = widget.syncRepository;

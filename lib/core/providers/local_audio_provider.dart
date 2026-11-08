@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File;
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
 import '../domain/models/track.dart';
@@ -101,7 +102,9 @@ class LocalAudioProvider implements MusicProvider {
     }
 
     final track = trackResult.dataOrNull!;
-    final path = track.artworkAsset;
+    final path = (track.filePath != null && track.filePath!.trim().isNotEmpty)
+        ? track.filePath!
+        : track.artworkAsset;
     final lower = path.toLowerCase();
     const audioExtensions = ['.mp3', '.m4a', '.wav', '.flac', '.ogg', '.aac', '.opus', '.webm'];
     final isAudioFile = audioExtensions.any((ext) => lower.endsWith(ext));
@@ -122,6 +125,16 @@ class LocalAudioProvider implements MusicProvider {
         providerId: id,
       ));
     } else {
+      final file = File(path);
+      if (!file.existsSync()) {
+        return Result.failure(PlaybackFailure(
+          type: PlaybackFailureType.sourceUnavailable,
+          internalMessage: "Local audio file was missing or moved: $path",
+          providerId: id,
+          trackId: providerTrackId,
+        ));
+      }
+
       return Result.success(PlaybackSource.file(
         trackId: track.id,
         fileUri: Uri.file(path),

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'app/cavia_app.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Enforce translucent system navigation and status bars for immersive liquid glass UI
@@ -15,6 +15,9 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
+
+  // Initialize Supabase if configured at startup
+  await CaviaApp.initializeSupabaseIfConfigured();
 
   // Development-only seeding can be opted into via --dart-define=CAVIA_DEV_SEED=true.
   // Production installs default to false (honest empty library).

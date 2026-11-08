@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import '../domain/result/result.dart';
 import '../domain/result/app_error.dart';
 
@@ -313,6 +315,54 @@ class SpotifyOAuthService {
         value: jsonEncode(session.toJson()),
       );
     } catch (_) {}
+  }
+
+  /// Completes the OAuth PKCE flow on desktop by spinning up a local HTTP loopback server,
+  /// opening the authorization URL in the system browser, and capturing the callback.
+  Future<Result<SpotifyTokenSession, AppError>> authenticateDesktopLoopback({
+    int port = 8888,
+    Duration timeout = const Duration(minutes: 3),
+  }) async {
+    HttpServer? server;
+    try {
+      server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
+      final authUri = await createAuthorizationUrl();
+      if (await canLaunchUrl(authUri)) {
+        await launchUrl(authUri, mode: LaunchMode.externalApplication);
+      } else {
+        await server.close(force: true);
+        return const Result.failure(ValidationError('Could not launch system browser for Spotify authorization.'));
+      }
+
+      final request = await server.first.timeout(timeout);
+      final callbackUri = request.uri;
+      final fullCallbackUrl = 'http://127.0.0.1:$port${callbackUri.path}?${callbackUri.query}';
+
+      request.response.headers.contentType = ContentType.html;
+      request.response.write('''
+<!DOCTYPE html>
+<html>
+<head><title>Cavia Music - Connected</title><style>body { background: #0D0F13; color: #EDEAE4; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; } h1 { color: #E53935; font-size: 24px; } p { color: #A0A5B2; }</style></head>
+<body>
+  <div>
+    <h1>CAVIA / SPOTIFY CONNECTED</h1>
+    <p>Authorization successful. You may close this tab and return to Cavia Music.</p>
+  </div>
+</body>
+</html>
+''');
+      await request.response.close();
+      await server.close(force: true);
+
+      return await handleAuthorizationCallback(callbackUrl: fullCallbackUrl);
+    } catch (e, st) {
+      await server?.close(force: true);
+      return Result.failure(StorageError(
+        userMessage: 'Spotify authorization timed out or failed to connect.',
+        details: e.toString(),
+        cause: st,
+      ));
+    }
   }
 }
 
