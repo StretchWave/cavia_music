@@ -2,17 +2,18 @@ import 'package:flutter/material.dart';
 import '../../app/theme/cavia_colors.dart';
 import '../../app/theme/cavia_typography.dart';
 import '../../app/theme/cavia_glass.dart';
-import '../../core/components/glass_container.dart';
-import '../../core/components/japanese_scenery_background.dart';
-import '../../core/components/artwork_view.dart';
-import '../../core/components/waveform_visualizer.dart';
+import '../../core/components/cavia_glass_surface.dart';
+import '../../core/components/cavia_artwork.dart';
+import '../../core/components/cavia_scrub_bar.dart';
 import '../../core/components/animated_play_pause.dart';
 import '../../core/components/context_menus.dart';
+import '../../core/components/cavia_bottom_sheet.dart';
 import '../../core/state/playback_controller.dart';
 import '../../core/state/app_state_scope.dart';
 import '../queue/queue_sheet.dart';
 import '../lyrics/lyrics_screen.dart';
 
+/// Redesigned Full Player: Dominant Artwork × Real Scrubber × Restrained Ambient Bloom.
 class FullPlayerView extends StatefulWidget {
   final VoidCallback onCollapse;
 
@@ -23,13 +24,18 @@ class FullPlayerView extends StatefulWidget {
 }
 
 class _FullPlayerViewState extends State<FullPlayerView> {
-  bool _showQueue = false;
   bool _showLyrics = false;
 
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  void _openQueueSheet(BuildContext context) {
+    CaviaBottomSheet.show(
+      context: context,
+      initialChildSize: 0.7,
+      maxChildSize: 0.95,
+      child: const SizedBox(
+        height: 520,
+        child: QueueSheet(),
+      ),
+    );
   }
 
   @override
@@ -42,33 +48,30 @@ class _FullPlayerViewState extends State<FullPlayerView> {
       builder: (context, _) {
         final song = playback.currentSong;
         if (song == null) {
-          // Honest empty state: the full player only opens with a song, but
-          // keep a graceful collapse path here in case it is shown anyway.
           return Scaffold(
-            backgroundColor: Colors.transparent,
+            backgroundColor: CaviaColors.background,
             body: SafeArea(
-              child: Stack(
-                children: [
-                  JapaneseSceneryBackground(imageAsset: '', opacity: 0.2),
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
                       icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
                       color: CaviaColors.textIvory,
                       onPressed: widget.onCollapse,
                     ),
-                  ),
-                  Center(
-                    child: Text(
+                    const SizedBox(height: 12),
+                    const Text(
                       'Nothing is playing yet',
-                      style: CaviaTypography.songTitle,
+                      style: CaviaTypography.titleMedium,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
         }
+
         final isLiked = library.isSongLiked(song.id);
 
         if (_showLyrics) {
@@ -78,20 +81,41 @@ class _FullPlayerViewState extends State<FullPlayerView> {
         }
 
         return Scaffold(
-          backgroundColor: Colors.transparent,
+          backgroundColor: CaviaColors.background,
           body: Stack(
             children: [
-              // Atmospheric Background derived from artwork/sumi-e
-              JapaneseSceneryBackground(
-                imageAsset: song.artworkAsset,
-                opacity: 0.35,
+              // Restrained Ambient Bloom from Artwork
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.25,
+                  child: CaviaArtwork(
+                    imageAsset: song.artworkAsset,
+                    radius: 0,
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        CaviaColors.backgroundElevated,
+                        CaviaColors.background,
+                        CaviaColors.background,
+                      ],
+                      stops: [0.0, 0.45, 1.0],
+                    ),
+                  ),
+                ),
               ),
 
-              // Main Player Content
+              // Main Content
               SafeArea(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final artSize = (constraints.maxHeight * 0.38).clamp(180.0, 320.0);
+                    final artSize = (constraints.maxHeight * 0.40).clamp(200.0, 340.0);
 
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -107,21 +131,20 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                 IconButton(
                                   icon: const Icon(
                                     Icons.keyboard_arrow_down_rounded,
-                                    size: 32,
+                                    size: 30,
                                   ),
                                   color: CaviaColors.textIvory,
+                                  tooltip: 'Collapse',
                                   onPressed: widget.onCollapse,
                                 ),
-                                Text(
+                                const Text(
                                   'NOW PLAYING',
-                                  style: CaviaTypography.sectionLabel.copyWith(
-                                    fontSize: 11,
-                                    color: CaviaColors.textSilver,
-                                  ),
+                                  style: CaviaTypography.overline,
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.more_vert_rounded),
                                   color: CaviaColors.textIvory,
+                                  tooltip: 'Track options',
                                   onPressed: () => TrackContextMenu.show(context, song),
                                 ),
                               ],
@@ -129,9 +152,9 @@ class _FullPlayerViewState extends State<FullPlayerView> {
 
                             const SizedBox(height: 12),
 
-                            // Large Album Artwork with Liquid Glass Arc Reflection
+                            // Hero Artwork with Liquid Glass Arc
                             Center(
-                              child: ArtworkView(
+                              child: CaviaArtwork(
                                 imageAsset: song.artworkAsset,
                                 width: artSize,
                                 height: artSize,
@@ -140,7 +163,7 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                               ),
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
 
                             // Track Title, Artist & Like Heart
                             Row(
@@ -152,14 +175,15 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                     children: [
                                       Text(
                                         song.title,
-                                        style: CaviaTypography.songTitleLarge,
+                                        style: CaviaTypography.displayMedium,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         song.artist,
-                                        style: CaviaTypography.artistSubtitle.copyWith(
+                                        style: CaviaTypography.bodyMedium.copyWith(
+                                          color: CaviaColors.textSilver,
                                           fontSize: 15,
                                         ),
                                         maxLines: 1,
@@ -179,39 +203,24 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                     size: 26,
                                   ),
                                   onPressed: () => library.toggleLikeSong(song),
+                                  tooltip: isLiked ? 'Unlike track' : 'Like track',
                                 ),
                               ],
                             ),
 
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 16),
 
-                            // Interactive Crimson Waveform Visualizer Scrubber
-                            WaveformVisualizer(
-                              progress: playback.progress,
+                            // High-Precision Interactive Scrubber
+                            CaviaScrubBar(
+                              position: playback.currentPosition,
+                              duration: playback.totalDuration,
                               isPlaying: playback.isPlaying,
                               onSeek: playback.seekTo,
-                              height: 38,
-                            ),
-                            const SizedBox(height: 6),
-
-                            // Timestamps (Current & Total)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _formatDuration(playback.currentPosition),
-                                  style: CaviaTypography.caption,
-                                ),
-                                Text(
-                                  _formatDuration(playback.totalDuration),
-                                  style: CaviaTypography.caption,
-                                ),
-                              ],
                             ),
 
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 16),
 
-                            // Playback Controls Row
+                            // Primary Playback Controls
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -223,20 +232,22 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                         ? CaviaColors.vermilionBright
                                         : CaviaColors.textSilver,
                                   ),
+                                  tooltip: playback.isShuffle ? 'Shuffle on' : 'Shuffle off',
                                   onPressed: playback.toggleShuffle,
                                 ),
 
-                                // Previous
+                                // Skip Previous
                                 IconButton(
                                   icon: const Icon(
                                     Icons.skip_previous_rounded,
-                                    size: 32,
+                                    size: 34,
                                   ),
                                   color: CaviaColors.textIvory,
+                                  tooltip: 'Previous',
                                   onPressed: playback.skipPrevious,
                                 ),
 
-                                // Large Concentric Glowing Play / Pause
+                                // Glowing Concentric Play / Pause
                                 AnimatedPlayPauseButton(
                                   isPlaying: playback.isPlaying,
                                   onTap: playback.togglePlayPause,
@@ -244,13 +255,14 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                   iconSize: 32,
                                 ),
 
-                                // Next
+                                // Skip Next
                                 IconButton(
                                   icon: const Icon(
                                     Icons.skip_next_rounded,
-                                    size: 32,
+                                    size: 34,
                                   ),
                                   color: CaviaColors.textIvory,
+                                  tooltip: 'Next',
                                   onPressed: playback.skipNext,
                                 ),
 
@@ -264,47 +276,42 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                                         ? CaviaColors.vermilionBright
                                         : CaviaColors.textSilver,
                                   ),
+                                  tooltip: playback.repeatMode == CaviaRepeatMode.one
+                                      ? 'Repeat one'
+                                      : playback.repeatMode == CaviaRepeatMode.all
+                                          ? 'Repeat all'
+                                          : 'Repeat off',
                                   onPressed: playback.cycleRepeatMode,
                                 ),
                               ],
                             ),
 
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
 
-                            // Floating Bottom Glass Toolbar (Queue, Waveform/Equalizer, Lyrics)
-                            GlassContainer(
+                            // Bottom Glass Action Pills (Queue & Lyrics)
+                            CaviaGlassSurface(
                               radius: CaviaGlass.radiusPill,
                               blur: CaviaGlass.blurHeavy,
                               surfaceColor: CaviaColors.glassSurface,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                                horizontal: 20,
                                 vertical: 6,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.queue_music_rounded),
-                                    color: _showQueue
-                                        ? CaviaColors.vermilionBright
-                                        : CaviaColors.textIvory,
+                                    icon: const Icon(Icons.queue_music_rounded, size: 22),
+                                    color: CaviaColors.textIvory,
                                     tooltip: 'Queue',
-                                    onPressed: () {
-                                      setState(() {
-                                        _showQueue = !_showQueue;
-                                      });
-                                    },
+                                    onPressed: () => _openQueueSheet(context),
                                   ),
-                                  const SizedBox(width: 16),
+                                  const SizedBox(width: 14),
                                   IconButton(
-                                    icon: const Icon(Icons.lyrics_rounded),
+                                    icon: const Icon(Icons.lyrics_rounded, size: 22),
                                     color: CaviaColors.textIvory,
                                     tooltip: 'Lyrics',
-                                    onPressed: () {
-                                      setState(() {
-                                        _showLyrics = true;
-                                      });
-                                    },
+                                    onPressed: () => setState(() => _showLyrics = true),
                                   ),
                                 ],
                               ),
@@ -318,14 +325,6 @@ class _FullPlayerViewState extends State<FullPlayerView> {
                   },
                 ),
               ),
-
-              // Queue Drawer Overlay
-              if (_showQueue)
-                Positioned.fill(
-                  child: QueueSheet(
-                    onClose: () => setState(() => _showQueue = false),
-                  ),
-                ),
             ],
           ),
         );

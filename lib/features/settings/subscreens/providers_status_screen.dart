@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/cavia_colors.dart';
 import '../../../app/theme/cavia_typography.dart';
 import '../../../app/theme/cavia_glass.dart';
-import '../../../core/components/glass_container.dart';
-import '../../../core/components/japanese_scenery_background.dart';
+import '../../../core/components/cavia_glass_surface.dart';
+import '../../../core/components/cavia_page_header.dart';
+import '../../../core/components/cavia_feedback_states.dart';
 import '../../../core/providers/music_provider.dart';
 import '../../../core/state/app_state_scope.dart';
 
@@ -22,61 +23,28 @@ class ProviderStatusScreen extends StatelessWidget {
         final providers = settings.registeredProviders;
 
         return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              const JapaneseSceneryBackground(opacity: 0.35),
-              SafeArea(
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                          color: CaviaColors.textIvory,
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Source Providers',
-                          style: CaviaTypography.display.copyWith(fontSize: 20),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        providers.isEmpty
-                            ? 'No providers are registered in this build.'
-                            : 'Status observed from the running audio engine.',
-                        style: CaviaTypography.caption
-                            .copyWith(color: CaviaColors.textSilver),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: providers.isEmpty
-                          ? Center(
-                              child: Text(
-                                'Nothing to show',
-                                style: CaviaTypography.body,
-                              ),
-                            )
-                          : ListView.builder(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              itemCount: providers.length,
-                              itemBuilder: (context, index) {
-                                final provider = providers[index];
-                                return _ProviderTile(provider: provider);
-                              },
-                            ),
-                    ),
-                  ],
+          backgroundColor: CaviaColors.background,
+          body: SafeArea(
+            bottom: false,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+              children: [
+                const CaviaPageHeader(
+                  title: 'Source Providers',
+                  subtitle: 'OBSERVED AUDIO STREAM ENGINE INTEGRATIONS',
+                  showBackButton: true,
+                  padding: EdgeInsets.only(bottom: 16),
                 ),
-              ),
-            ],
+                if (providers.isEmpty)
+                  const CaviaEmptyState(
+                    icon: Icons.layers_outlined,
+                    title: 'No Providers Registered',
+                    subtitle: 'No audio source providers are registered in this build.',
+                  )
+                else
+                  ...providers.map((p) => _ProviderTile(provider: p)),
+              ],
+            ),
           ),
         );
       },
@@ -103,8 +71,11 @@ class _ProviderTile extends StatelessWidget {
       if (capabilities.authenticationRequired) 'Sign-in required',
     ];
 
-    return GlassContainer(
+    return CaviaGlassSurface(
       radius: CaviaGlass.radiusCard,
+      blur: CaviaGlass.blurStandard,
+      surfaceColor: CaviaColors.surfaceCard,
+      borderColor: CaviaColors.glassBorderSubtle,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -122,7 +93,7 @@ class _ProviderTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: provider.isOperational
-                      ? CaviaColors.vermilionBright.withValues(alpha: 0.15)
+                      ? CaviaColors.vermilion.withValues(alpha: 0.15)
                       : CaviaColors.textSilver.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -145,6 +116,7 @@ class _ProviderTile extends StatelessWidget {
                         color: provider.isOperational
                             ? CaviaColors.vermilionBright
                             : CaviaColors.textSilver,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -152,40 +124,28 @@ class _ProviderTile extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            'id: ${provider.id}',
-            style: CaviaTypography.caption.copyWith(
-              color: CaviaColors.textDim,
-            ),
-          ),
           const SizedBox(height: 10),
-          if (features.isEmpty)
-            Text(
-              'No capabilities declared',
-              style: CaviaTypography.caption.copyWith(
-                color: CaviaColors.textDim,
-              ),
-            )
-          else
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: features
-                  .map((f) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: CaviaColors.glassSurface,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          f,
-                          style: CaviaTypography.caption.copyWith(fontSize: 10),
-                        ),
-                      ))
-                  .toList(),
-            ),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: features.map((feat) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: CaviaColors.glassSurface,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: CaviaColors.glassBorderSubtle),
+                ),
+                child: Text(
+                  feat,
+                  style: CaviaTypography.caption.copyWith(
+                    color: CaviaColors.textSilver,
+                    fontSize: 11,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

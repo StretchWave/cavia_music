@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../app/theme/cavia_colors.dart';
 import '../../app/theme/cavia_glass.dart';
 
-/// Album artwork presentation with liquid glass arc refraction overlay and Hero transition.
-class ArtworkView extends StatelessWidget {
+/// Album artwork presentation with liquid glass arc refraction overlay and optional Hero transition.
+/// Unified component for all artwork displays across Cavia Music.
+class CaviaArtwork extends StatelessWidget {
   final String imageAsset;
   final double? width;
   final double? height;
@@ -12,7 +14,7 @@ class ArtworkView extends StatelessWidget {
   final bool showGlassArc;
   final VoidCallback? onTap;
 
-  const ArtworkView({
+  const CaviaArtwork({
     super.key,
     required this.imageAsset,
     this.width,
@@ -52,42 +54,9 @@ class ArtworkView extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Artwork Image
-            imageAsset.startsWith('http://') || imageAsset.startsWith('https://')
-                ? Image.network(
-                    imageAsset,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: CaviaColors.surfaceDark,
-                        child: const Center(
-                          child: Icon(
-                            Icons.music_note_rounded,
-                            color: CaviaColors.textSilver,
-                            size: 32,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : Image.asset(
-                    imageAsset,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: CaviaColors.surfaceDark,
-                        child: const Center(
-                          child: Icon(
-                            Icons.music_note_rounded,
-                            color: CaviaColors.textSilver,
-                            size: 32,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+            _buildImage(),
 
-            // Liquid Glass curved reflection (seen on Now Playing screen)
+            // Liquid Glass curved reflection
             if (showGlassArc)
               Positioned.fill(
                 child: CustomPaint(
@@ -109,6 +78,7 @@ class ArtworkView extends StatelessWidget {
                       Colors.white.withValues(alpha: 0.1),
                       Colors.transparent,
                     ],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
                 ),
               ),
@@ -128,39 +98,73 @@ class ArtworkView extends StatelessWidget {
     if (onTap != null) {
       artwork = GestureDetector(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
         child: artwork,
       );
     }
 
     return artwork;
   }
+
+  Widget _buildImage() {
+    final trimmed = imageAsset.trim();
+    if (trimmed.isEmpty) {
+      return _buildFallback();
+    }
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return Image.network(
+        trimmed,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildFallback(),
+      );
+    }
+
+    if (trimmed.startsWith('file://') || File(trimmed).isAbsolute) {
+      final filePath = trimmed.startsWith('file://')
+          ? trimmed.replaceFirst('file://', '')
+          : trimmed;
+      final file = File(filePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildFallback(),
+        );
+      }
+    }
+
+    return Image.asset(
+      trimmed,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => _buildFallback(),
+    );
+  }
+
+  Widget _buildFallback() {
+    return Container(
+      color: CaviaColors.surfaceDark,
+      child: Center(
+        child: Icon(
+          Icons.music_note_rounded,
+          color: CaviaColors.textSilver.withValues(alpha: 0.6),
+          size: (width != null && width! < 60) ? 20 : 32,
+        ),
+      ),
+    );
+  }
 }
 
-/// Draws the elegant liquid glass arc light refraction across the artwork.
+/// Backward compatibility alias for ArtworkView.
+typedef ArtworkView = CaviaArtwork;
+
+/// Renders a liquid glass arc light refraction across the upper half of artwork.
 class _LiquidGlassArcPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final path = Path();
-    // Sweeping glass lens reflection arc from top-left curving down toward right
-    path.moveTo(0, size.height * 0.45);
-    path.quadraticBezierTo(
-      size.width * 0.4,
-      size.height * 0.15,
-      size.width * 0.85,
-      0,
-    );
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, size.height * 0.35);
-    path.quadraticBezierTo(
-      size.width * 0.5,
-      size.height * 0.55,
-      0,
-      size.height * 0.85,
-    );
-    path.close();
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
 
-    final paint = Paint()
+    // Diagonal specular sweep
+    final sweepPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
@@ -168,36 +172,47 @@ class _LiquidGlassArcPainter extends CustomPainter {
           Colors.white.withValues(alpha: 0.22),
           Colors.white.withValues(alpha: 0.08),
           Colors.white.withValues(alpha: 0.0),
+          Colors.transparent,
         ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+        stops: const [0.0, 0.35, 0.70, 1.0],
+      ).createShader(rect);
 
-    canvas.drawPath(path, paint);
+    final sweepPath = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width * 0.75, 0)
+      ..lineTo(0, size.height * 0.75)
+      ..close();
 
-    // Fine specular curved edge ring
-    final strokePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
+    canvas.drawPath(sweepPath, sweepPaint);
+
+    // Curved lens arc highlight across top
+    final arcPath = Path()
+      ..moveTo(0, size.height * 0.35)
+      ..quadraticBezierTo(
+        size.width * 0.5,
+        size.height * 0.55,
+        size.width,
+        size.height * 0.20,
+      )
+      ..lineTo(size.width, 0)
+      ..lineTo(0, 0)
+      ..close();
+
+    final arcPaint = Paint()
       ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
         colors: [
-          Colors.white.withValues(alpha: 0.4),
-          Colors.white.withValues(alpha: 0.05),
+          Colors.white.withValues(alpha: 0.14),
+          Colors.white.withValues(alpha: 0.03),
+          Colors.transparent,
         ],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+        stops: const [0.0, 0.6, 1.0],
+      ).createShader(rect);
 
-    final arcLine = Path();
-    arcLine.moveTo(0, size.height * 0.45);
-    arcLine.quadraticBezierTo(
-      size.width * 0.4,
-      size.height * 0.15,
-      size.width * 0.85,
-      0,
-    );
-    canvas.drawPath(arcLine, strokePaint);
+    canvas.drawPath(arcPath, arcPaint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
-

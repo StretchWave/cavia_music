@@ -66,49 +66,53 @@ class _NavTabItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: CaviaMotion.durationFast,
-        curve: CaviaMotion.curveFluid,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected
-                  ? CaviaColors.vermilionBright
-                  : CaviaColors.textSilver,
-            ),
-            const SizedBox(height: 4),
-            // Glowing vermilion underline dot/pill indicator
-            AnimatedContainer(
-              duration: CaviaMotion.durationFast,
-              width: isSelected ? 16 : 0,
-              height: 2.5,
-              decoration: BoxDecoration(
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: '$label tab',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: CaviaMotion.durationFast,
+          curve: CaviaMotion.curveFluid,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 24,
                 color: isSelected
                     ? CaviaColors.vermilionBright
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(2),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: CaviaColors.vermilion.withValues(alpha: 0.8),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
+                    : CaviaColors.textSilver,
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              // Glowing vermilion underline dot/pill indicator
+              AnimatedContainer(
+                duration: CaviaMotion.durationFast,
+                width: isSelected ? 16 : 0,
+                height: 2.5,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? CaviaColors.vermilionBright
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: CaviaColors.vermilion.withValues(alpha: 0.8),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
-

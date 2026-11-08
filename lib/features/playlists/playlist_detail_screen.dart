@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import '../../app/theme/cavia_colors.dart';
 import '../../app/theme/cavia_typography.dart';
 import '../../app/theme/cavia_glass.dart';
-import '../../core/components/japanese_scenery_background.dart';
-import '../../core/components/artwork_view.dart';
-import '../../core/components/context_menus.dart';
+import '../../core/components/cavia_artwork.dart';
+import '../../core/components/cavia_track_row.dart';
 import '../../core/components/cavia_dialog.dart';
+import '../../core/components/cavia_feedback_states.dart';
 import '../../core/components/toast.dart';
 import '../../core/models/music_models.dart';
 import '../../core/state/app_state_scope.dart';
 import 'playlist_edit_dialog.dart';
 
+/// Redesigned Playlist Detail Screen: Stable Keys for Duplicates × Unified CaviaTrackRow.
 class PlaylistDetailScreen extends StatelessWidget {
   final String playlistId;
 
@@ -22,16 +23,13 @@ class PlaylistDetailScreen extends StatelessWidget {
     return '$min min';
   }
 
-  String _formatTrackDuration(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds % 60;
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final library = AppStateScope.libraryOf(context);
     final playback = AppStateScope.playbackOf(context);
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final heroHeight = (screenHeight * 0.40).clamp(280.0, 360.0);
+    final artSize = (heroHeight * 0.48).clamp(130.0, 170.0);
 
     return StreamBuilder<List<Song>>(
       stream: library.watchPlaylistSongs(playlistId),
@@ -44,43 +42,46 @@ class PlaylistDetailScreen extends StatelessWidget {
           builder: (context, _) {
             final playlistList = library.playlists.where((p) => p.id == playlistId);
             if (playlistList.isEmpty) {
-              return const Scaffold(
-                body: Center(child: Text('Playlist not found')),
+              return Scaffold(
+                backgroundColor: CaviaColors.background,
+                appBar: AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                body: const CaviaEmptyState(
+                  icon: Icons.search_off_rounded,
+                  title: 'Playlist Not Found',
+                  subtitle: 'This playlist may have been deleted or moved.',
+                ),
               );
             }
             final playlist = playlistList.first;
 
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              // Atmospheric Background
-              JapaneseSceneryBackground(
-                imageAsset: playlist.artworkAsset,
-                opacity: 0.3,
-              ),
-
-              CustomScrollView(
+            return Scaffold(
+              backgroundColor: CaviaColors.background,
+              body: CustomScrollView(
                 slivers: [
-                  // App Bar with Hero Artwork
                   SliverAppBar(
-                    expandedHeight: 320,
+                    expandedHeight: heroHeight,
                     pinned: true,
-                    backgroundColor: CaviaColors.background.withValues(alpha: 0.8),
+                    backgroundColor: CaviaColors.background.withValues(alpha: 0.9),
                     leading: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                       color: CaviaColors.textIvory,
                       onPressed: () => Navigator.pop(context),
+                      tooltip: 'Back',
                     ),
                     actions: [
                       IconButton(
-                        icon: const Icon(Icons.edit_rounded),
+                        icon: const Icon(Icons.edit_rounded, size: 20),
                         color: CaviaColors.textIvory,
                         tooltip: 'Edit Playlist',
                         onPressed: () => PlaylistEditDialog.show(context, playlist),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 20),
                         color: CaviaColors.vermilionBright,
                         tooltip: 'Delete Playlist',
                         onPressed: () async {
@@ -104,19 +105,24 @@ class PlaylistDetailScreen extends StatelessWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const SizedBox(height: 40),
-                            ArtworkView(
+                            const SizedBox(height: 36),
+                            CaviaArtwork(
                               imageAsset: playlist.artworkAsset,
-                              width: 160,
-                              height: 160,
+                              width: artSize,
+                              height: artSize,
                               radius: CaviaGlass.radiusCard,
                               heroTag: 'playlist_${playlist.id}',
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              playlist.name,
-                              style: CaviaTypography.display.copyWith(fontSize: 22),
-                              textAlign: TextAlign.center,
+                            const SizedBox(height: 14),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              child: Text(
+                                playlist.name,
+                                style: CaviaTypography.displayMedium.copyWith(fontSize: 20),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -130,103 +136,90 @@ class PlaylistDetailScreen extends StatelessWidget {
                   ),
 
                   // Actions: Play & Shuffle
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                if (songs.isNotEmpty) {
-                                  playback.playQueue(songs, initialIndex: 0);
-                                }
-                              },
-                              icon: const Icon(Icons.play_arrow_rounded),
-                              label: const Text('Play All'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: CaviaColors.vermilion,
-                                foregroundColor: CaviaColors.textIvory,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () {
-                                if (songs.isNotEmpty) {
-                                  playback.playQueue(songs, shuffle: true);
-                                }
-                              },
-                              icon: const Icon(Icons.shuffle_rounded),
-                              label: const Text('Shuffle'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: CaviaColors.textIvory,
-                                side: const BorderSide(color: CaviaColors.glassBorder),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Description if available
-                  if (playlist.description.isNotEmpty)
+                  if (songs.isNotEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                        child: Text(
-                          playlist.description,
-                          style: CaviaTypography.body.copyWith(
-                            color: CaviaColors.textSilver,
-                            fontSize: 13,
-                          ),
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  playback.playQueue(songs, initialIndex: 0);
+                                },
+                                icon: const Icon(Icons.play_arrow_rounded),
+                                label: const Text('Play All'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: CaviaColors.vermilion,
+                                  foregroundColor: CaviaColors.textIvory,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(CaviaGlass.radiusPill),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  playback.playQueue(songs, shuffle: true);
+                                },
+                                icon: const Icon(Icons.shuffle_rounded),
+                                label: const Text('Shuffle'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: CaviaColors.textIvory,
+                                  side: const BorderSide(color: CaviaColors.glassBorder),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(CaviaGlass.radiusPill),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                  // Optional Description
+                  if (playlist.description.isNotEmpty)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        child: Text(
+                          playlist.description,
+                          style: CaviaTypography.bodySmall,
+                        ),
+                      ),
+                    ),
 
-                  // Track list with Reorder
-                  SliverPadding(
-                    padding: const EdgeInsets.only(left: 16, right: 16, bottom: 120),
-                    sliver: songs.isEmpty
-                        ? const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.only(top: 48),
-                              child: Center(
-                                child: Text(
-                                  'Playlist is empty. Add some music.',
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                          )
-                        : SliverList(
+                  // Track List with Safe Dismissible Keys
+                  if (songs.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: CaviaEmptyState(
+                        icon: Icons.queue_music_rounded,
+                        title: 'Playlist is Empty',
+                        subtitle: 'Search tracks and add them to this playlist.',
+                      ),
+                    )
+                  else
+                    SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
                           final song = songs[index];
-                          final isCurrent =
-                              playback.currentSong?.id == song.id;
+                          final isCurrent = playback.currentSong?.id == song.id;
 
                           return Dismissible(
-                            key: ValueKey('${playlist.id}_${song.id}'),
+                            // Unique key supporting duplicate entries at distinct positions
+                            key: ValueKey('${playlist.id}_${song.id}_$index'),
                             direction: DismissDirection.endToStart,
                             background: Container(
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 20),
                               decoration: BoxDecoration(
                                 color: CaviaColors.vermilion.withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
                                 Icons.delete_outline_rounded,
@@ -234,95 +227,36 @@ class PlaylistDetailScreen extends StatelessWidget {
                               ),
                             ),
                             onDismissed: (_) async {
-                              final removed = await library
-                                  .removePlaylistEntry(
-                                    playlist.id,
-                                    trackId: song.id,
-                                  );
-                              if (context.mounted) {
+                              final removed = await library.removePlaylistEntry(
+                                playlist.id,
+                                trackId: song.id,
+                              );
+                              if (context.mounted && removed) {
                                 CaviaToast.show(
                                   context,
-                                  removed
-                                      ? 'Removed from playlist'
-                                      : "Couldn't remove the entry",
+                                  'Removed "${song.title}" from playlist',
+                                  icon: Icons.remove_circle_outline_rounded,
                                 );
                               }
                             },
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              leading: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 24,
-                                    child: Text(
-                                      '${index + 1}',
-                                      style: CaviaTypography.caption.copyWith(
-                                        color: isCurrent
-                                            ? CaviaColors.vermilionBright
-                                            : CaviaColors.textDim,
-                                      ),
-                                    ),
-                                  ),
-                                  ArtworkView(
-                                    imageAsset: song.artworkAsset,
-                                    width: 44,
-                                    height: 44,
-                                    radius: 8,
-                                  ),
-                                ],
-                              ),
-                              title: Text(
-                                song.title,
-                                style: CaviaTypography.songTitle.copyWith(
-                                  color: isCurrent
-                                      ? CaviaColors.vermilionBright
-                                      : CaviaColors.textIvory,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                song.artist,
-                                style: CaviaTypography.artistSubtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _formatTrackDuration(song.duration),
-                                    style: CaviaTypography.caption,
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.more_vert_rounded,
-                                      size: 18,
-                                      color: CaviaColors.textSilver,
-                                    ),
-                                    onPressed: () => TrackContextMenu.show(context, song),
-                                  ),
-                                ],
-                              ),
-                              onTap: () {
-                                playback.playQueue(songs, initialIndex: index);
-                              },
+                            child: CaviaTrackRow(
+                              track: song,
+                              index: index,
+                              showIndex: true,
+                              isCurrent: isCurrent,
+                              isPlaying: isCurrent && playback.isPlaying,
+                              onTap: () => playback.playQueue(songs, initialIndex: index),
                             ),
                           );
                         },
                         childCount: songs.length,
                       ),
                     ),
-                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 120)),
                 ],
               ),
-            ],
-          ),
-        );
+            );
           },
         );
       },

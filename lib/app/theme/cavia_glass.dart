@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'cavia_colors.dart';
 
 /// Glassmorphism design tokens and styling configurations.
+/// Standardizes blur levels, corner radii, borders, and shadows.
 class CaviaGlass {
   CaviaGlass._();
 
@@ -10,14 +11,14 @@ class CaviaGlass {
   static const double blurStandard = 18.0;
   static const double blurHeavy = 28.0;
 
-  // Corner Radii
-  static const double radiusSmall = 12.0;
-  static const double radiusMedium = 18.0;
+  // Corner Radii (8-pt & 4-pt grid based)
+  static const double radiusSmall = 8.0;
+  static const double radiusMedium = 14.0;
+  static const double radiusCard = 18.0;
   static const double radiusLarge = 24.0;
-  static const double radiusCard = 22.0;
   static const double radiusPill = 999.0;
 
-  // Glass Container Decoration
+  // Glass Container Decoration (Harmonized with GlassContainer widget)
   static BoxDecoration box({
     double radius = radiusMedium,
     bool glow = false,
@@ -29,19 +30,19 @@ class CaviaGlass {
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
         color: borderColor ??
-            (glow ? CaviaColors.vermilion.withValues(alpha: 0.5) : CaviaColors.glassBorder),
-        width: glow ? 1.4 : 1.0,
+            (glow ? CaviaColors.vermilionBright.withValues(alpha: 0.6) : CaviaColors.glassBorder),
+        width: glow ? 1.5 : 1.0,
       ),
       boxShadow: [
         if (glow)
           BoxShadow(
-            color: CaviaColors.vermilion.withValues(alpha: 0.25),
-            blurRadius: 18,
+            color: CaviaColors.vermilion.withValues(alpha: 0.3),
+            blurRadius: 20,
             spreadRadius: 1,
             offset: const Offset(0, 2),
           ),
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.35),
+          color: Colors.black.withValues(alpha: 0.4),
           blurRadius: 16,
           offset: const Offset(0, 6),
         ),
@@ -52,14 +53,14 @@ class CaviaGlass {
   // Specular Border Gradient for liquid glass sheen
   static Gradient specularBorder({bool glow = false}) {
     if (glow) {
-      return const LinearGradient(
+      return LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFFE53935),
-          Color(0x33E53935),
-          Color(0x1AE53935),
-          Color(0x66E53935),
+          CaviaColors.vermilion,
+          CaviaColors.vermilion.withValues(alpha: 0.2),
+          CaviaColors.vermilion.withValues(alpha: 0.1),
+          CaviaColors.vermilion.withValues(alpha: 0.4),
         ],
       );
     }
@@ -76,4 +77,3 @@ class CaviaGlass {
     );
   }
 }
-

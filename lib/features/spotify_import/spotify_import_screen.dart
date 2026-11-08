@@ -4,7 +4,6 @@ import '../../app/theme/cavia_colors.dart';
 import '../../app/theme/cavia_typography.dart';
 import '../../app/theme/cavia_glass.dart';
 import '../../core/components/glass_container.dart';
-import '../../core/components/japanese_scenery_background.dart';
 import '../../core/components/artwork_view.dart';
 import '../../core/config/cavia_config.dart';
 import '../../core/state/library_controller.dart';
@@ -186,48 +185,40 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
     final library = AppStateScope.libraryOf(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
-        children: [
-          const JapaneseSceneryBackground(
-            imageAsset: 'assets/images/bg_search.jpg',
-            opacity: 0.4,
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                        color: CaviaColors.textIvory,
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Spotify Playlist Import',
-                        style: CaviaTypography.display.copyWith(fontSize: 20),
-                      ),
-                    ],
+      backgroundColor: CaviaColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    color: CaviaColors.textIvory,
+                    onPressed: () => Navigator.pop(context),
                   ),
-                ),
-
-                // Main Workflow Area
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _setupError != null
-                        ? _buildNotConfiguredState()
-                        : _buildWorkflowContent(context, library),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Spotify Playlist Import',
+                    style: CaviaTypography.display.copyWith(fontSize: 20),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Main Workflow Area
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _setupError != null
+                    ? _buildNotConfiguredState()
+                    : _buildWorkflowContent(context, library),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,12 +1,105 @@
 import 'package:flutter/material.dart';
 import 'cavia_colors.dart';
 
-/// Distinctive editorial typography system for Cavia_Music.
-/// Features Japanese Kanji displays, spaced wordmarks, and high-readability body text.
+/// Distinctive editorial typography system for Cavia Music:
+/// Japanese Editorial × Restrained Liquid Glass.
+///
+/// Follows an 8-pt / 4-pt grid rhythm with strict contrast standards (WCAG AA).
 class CaviaTypography {
   CaviaTypography._();
 
-  // Wordmark: S O N A R A /
+  // --- Display & Hero Titles ---
+  static const TextStyle displayLarge = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 28,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.6,
+    height: 1.2,
+  );
+
+  static const TextStyle displayMedium = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 22,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.4,
+    height: 1.2,
+  );
+
+  static const TextStyle displaySmall = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+    height: 1.25,
+  );
+
+  // --- Titles ---
+  static const TextStyle titleLarge = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 17,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+  );
+
+  static const TextStyle titleMedium = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 15,
+    fontWeight: FontWeight.w600,
+    letterSpacing: -0.2,
+  );
+
+  static const TextStyle titleSmall = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.0,
+  );
+
+  // --- Body ---
+  static const TextStyle bodyMedium = TextStyle(
+    color: CaviaColors.textIvoryMuted,
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    height: 1.45,
+  );
+
+  static const TextStyle bodySmall = TextStyle(
+    color: CaviaColors.textSilver,
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.1,
+  );
+
+  // --- Labels & Overlines ---
+  static const TextStyle labelLarge = TextStyle(
+    color: CaviaColors.textIvory,
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+  );
+
+  static const TextStyle labelMedium = TextStyle(
+    color: CaviaColors.textSilver,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.2,
+  );
+
+  static const TextStyle labelSmall = TextStyle(
+    color: CaviaColors.textDim,
+    fontSize: 11,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.3,
+  );
+
+  static const TextStyle overline = TextStyle(
+    color: CaviaColors.vermilion,
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2.5,
+  );
+
+  // --- Brand Elements ---
   static const TextStyle wordmark = TextStyle(
     color: CaviaColors.textIvory,
     fontSize: 14,
@@ -14,73 +107,14 @@ class CaviaTypography {
     letterSpacing: 6.0,
   );
 
-  // Large Japanese Kanji Headings (e.g. 藏, 探, 設定)
   static const TextStyle kanjiHeader = TextStyle(
     color: CaviaColors.textIvory,
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: FontWeight.w400,
     height: 1.1,
   );
 
-  // Section Sub-labels in Vermilion (e.g. L I B R A R Y, S E A R C H, S E T T I N G S)
-  static const TextStyle sectionLabel = TextStyle(
-    color: CaviaColors.vermilion,
-    fontSize: 10,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 3.5,
-  );
-
-  // Screen Title (Large Display)
-  static const TextStyle display = TextStyle(
-    color: CaviaColors.textIvory,
-    fontSize: 26,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.5,
-    height: 1.2,
-  );
-
-  // Now Playing Track Title
-  static const TextStyle songTitleLarge = TextStyle(
-    color: CaviaColors.textIvory,
-    fontSize: 22,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.3,
-    height: 1.2,
-  );
-
-  // Standard Track Title in Lists
-  static const TextStyle songTitle = TextStyle(
-    color: CaviaColors.textIvory,
-    fontSize: 15,
-    fontWeight: FontWeight.w600,
-    letterSpacing: -0.2,
-  );
-
-  // Artist & Secondary Text
-  static const TextStyle artistSubtitle = TextStyle(
-    color: CaviaColors.textSilver,
-    fontSize: 13,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.1,
-  );
-
-  // Small Timestamps & Metadata
-  static const TextStyle caption = TextStyle(
-    color: CaviaColors.textDim,
-    fontSize: 11,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.3,
-  );
-
-  // Body Text for descriptions / settings
-  static const TextStyle body = TextStyle(
-    color: CaviaColors.textIvoryMuted,
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    height: 1.45,
-  );
-
-  // Active / Highlighted Lyrics
+  // --- Lyrics ---
   static const TextStyle lyricActive = TextStyle(
     color: CaviaColors.textIvory,
     fontSize: 24,
@@ -89,13 +123,22 @@ class CaviaTypography {
     height: 1.4,
   );
 
-  // Inactive Lyrics Line
   static const TextStyle lyricInactive = TextStyle(
     color: CaviaColors.textDim,
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: FontWeight.w500,
     letterSpacing: -0.1,
     height: 1.4,
   );
-}
 
+  // ==========================================
+  // Backward-Compatible Aliases
+  // ==========================================
+  static const TextStyle display = displayMedium;
+  static const TextStyle songTitleLarge = displayMedium;
+  static const TextStyle songTitle = titleMedium;
+  static const TextStyle artistSubtitle = bodySmall;
+  static const TextStyle caption = labelSmall;
+  static const TextStyle body = bodyMedium;
+  static const TextStyle sectionLabel = overline;
+}

@@ -279,6 +279,17 @@ class PlaybackController extends ChangeNotifier {
     await audioEngine.seek(targetDuration);
   }
 
+  void seekToDuration(Duration targetDuration) async {
+    final maxMs = _totalDuration.inMilliseconds;
+    final clamped = targetDuration.inMilliseconds.clamp(0, maxMs > 0 ? maxMs : 0);
+    _currentPosition = Duration(milliseconds: clamped);
+    notifyListeners();
+    _persistQueue();
+    await audioEngine.seek(_currentPosition);
+  }
+
+  void seekToSeconds(int seconds) => seekToDuration(Duration(seconds: seconds));
+
   Future<void> setPlaybackSpeed(double speed) async {
     final clamped = speed.clamp(0.25, 4.0);
     _playbackSpeed = clamped;

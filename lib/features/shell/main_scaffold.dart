@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/theme/cavia_colors.dart';
+import '../../core/responsive/responsive_breakpoints.dart';
 import '../../core/state/playback_controller.dart';
 import '../../core/state/app_state_scope.dart';
 import '../library/library_screen.dart';
@@ -21,6 +22,13 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   final NavController _navController = NavController();
 
+  // Keep screen instances in memory to preserve search input, scroll offsets, and filters
+  late final List<Widget> _screens = [
+    LibraryScreen(onOpenSettings: _navController.goToSettings),
+    const SearchScreen(),
+    const SettingsScreen(),
+  ];
+
   @override
   void dispose() {
     _navController.dispose();
@@ -34,7 +42,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return PlayerOverlayWrapper(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= 720;
+          final isDesktop = constraints.maxWidth >= CaviaBreakpoints.tabletMin;
 
           return Scaffold(
             backgroundColor: CaviaColors.background,
@@ -47,48 +55,33 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  Widget _buildScreen(int index) {
-    switch (index) {
-      case 0:
-        return LibraryScreen(onOpenSettings: _navController.goToSettings);
-      case 1:
-        return const SearchScreen();
-      case 2:
-        return const SettingsScreen();
-      default:
-        return LibraryScreen(onOpenSettings: _navController.goToSettings);
-    }
-  }
-
   Widget _buildMobileLayout(BuildContext context, PlaybackController playback) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final navBarBottom = 12.0 + (bottomInset > 0 ? bottomInset - 4 : 0);
+    final miniPlayerBottom = navBarBottom + 64.0;
+
     return Stack(
       children: [
-        // Indexed Active Page with smooth AnimatedSwitcher
+        // IndexedStack preserves state across tab changes (search queries, scroll offsets, filters)
         ListenableBuilder(
           listenable: _navController,
           builder: (context, _) {
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              child: KeyedSubtree(
-                key: ValueKey<int>(_navController.currentIndex),
-                child: _buildScreen(_navController.currentIndex),
-              ),
+            return IndexedStack(
+              index: _navController.currentIndex,
+              children: _screens,
             );
           },
         ),
 
-        // Floating Mini-Player (Positioned directly above bottom nav bar).
-        // Hidden entirely while no playback is queued — honest empty state.
+        // Floating Mini-Player (Positioned directly above bottom nav bar with dynamic clearance)
         Positioned(
           left: 16,
           right: 16,
-          bottom: 74,
+          bottom: miniPlayerBottom,
           child: ListenableBuilder(
             listenable: playback,
             builder: (context, _) => playback.hasCurrentSong
-                ? MiniPlayer(
-                    onTap: () => playback.setFullPlayerExpanded(true),
-                  )
+                ? MiniPlayer(onTap: () => playback.setFullPlayerExpanded(true))
                 : const SizedBox.shrink(),
           ),
         ),
@@ -97,9 +90,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         Positioned(
           left: 20,
           right: 20,
-          bottom: 12,
+          bottom: navBarBottom,
           child: SafeArea(
             top: false,
+            bottom: false,
             child: CaviaBottomNavBar(navController: _navController),
           ),
         ),
@@ -107,27 +101,30 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  Widget _buildDesktopLayout(BuildContext context, PlaybackController playback) {
+  Widget _buildDesktopLayout(
+    BuildContext context,
+    PlaybackController playback,
+  ) {
     return Row(
       children: [
-        // Compact Desktop Sidebar
+        // Desktop Sidebar
         DesktopSidebar(navController: _navController),
 
-        // Main Content Area with Bottom Mini-Player
+        // Main Content Area with desktop layout
         Expanded(
           child: Stack(
             children: [
-              ListenableBuilder(
-                listenable: _navController,
-                builder: (context, _) {
-                  return AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 240),
-                    child: KeyedSubtree(
-                      key: ValueKey<int>(_navController.currentIndex),
-                      child: _buildScreen(_navController.currentIndex),
-                    ),
-                  );
-                },
+              // Constrained, centered content area
+              ResponsiveContentWrapper(
+                child: ListenableBuilder(
+                  listenable: _navController,
+                  builder: (context, _) {
+                    return IndexedStack(
+                      index: _navController.currentIndex,
+                      children: _screens,
+                    );
+                  },
+                ),
               ),
 
               // Desktop Floating Bottom Mini-Player
@@ -135,13 +132,15 @@ class _MainScaffoldState extends State<MainScaffold> {
                 left: 24,
                 right: 24,
                 bottom: 16,
-                child: ListenableBuilder(
-                  listenable: playback,
-                  builder: (context, _) => playback.hasCurrentSong
-                      ? MiniPlayer(
-                          onTap: () => playback.setFullPlayerExpanded(true),
-                        )
-                      : const SizedBox.shrink(),
+                child: ResponsiveContentWrapper(
+                  child: ListenableBuilder(
+                    listenable: playback,
+                    builder: (context, _) => playback.hasCurrentSong
+                        ? MiniPlayer(
+                            onTap: () => playback.setFullPlayerExpanded(true),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ],
@@ -151,4 +150,3 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 }
-

@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app/theme/cavia_colors.dart';
 import '../../app/theme/cavia_typography.dart';
-import '../../app/theme/cavia_glass.dart';
-import '../../core/components/glass_container.dart';
-import '../../core/components/japanese_scenery_background.dart';
-import '../../core/components/artwork_view.dart';
-import '../../core/components/context_menus.dart';
+import '../../core/components/cavia_page_header.dart';
+import '../../core/components/cavia_section_header.dart';
+import '../../core/components/cavia_search_field.dart';
+import '../../core/components/cavia_filter_control.dart';
+import '../../core/components/cavia_track_row.dart';
+import '../../core/components/cavia_artwork.dart';
+import '../../core/components/cavia_feedback_states.dart';
 import '../../core/models/music_models.dart';
 import '../../core/state/playback_controller.dart';
 import '../../core/state/library_controller.dart';
@@ -19,6 +21,8 @@ import '../albums/album_detail_screen.dart';
 import '../artists/artist_detail_screen.dart';
 import '../playlists/playlist_detail_screen.dart';
 
+/// Redesigned Search Screen: Explicit Search State Machine × Zero Dead Handlers.
+/// Operates on a clean dark surface without distracting backdrop imagery.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
@@ -28,17 +32,18 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   SearchService? _onlineSearchService;
   LocalSearchService? _localSearchService;
 
-  String _selectedCategory = 'All'; // All, Songs, Albums, Artists, Playlists
+  SearchFilterCategory _selectedCategory = SearchFilterCategory.all;
 
-  // Real persisted search results from the repositories.
   SearchResults _localResults = const SearchResults();
   SearchResponse? _onlineResults;
   bool _isSearchingOnline = false;
   String? _onlineSearchError;
   String _lastQuery = '';
+  int _searchSequence = 0;
 
   @override
   void didChangeDependencies() {
@@ -63,33 +68,30 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     _onlineSearchService?.cancel();
+    _localSearchService?.cancel();
     _searchController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  SearchFilterCategory get _categoryFilter {
-    switch (_selectedCategory) {
-      case 'Songs':
-        return SearchFilterCategory.songs;
-      case 'Albums':
-        return SearchFilterCategory.albums;
-      case 'Artists':
-        return SearchFilterCategory.artists;
-      case 'Playlists':
-        return SearchFilterCategory.playlists;
-      default:
-        return SearchFilterCategory.all;
-    }
+  bool _includeCategory(SearchFilterCategory cat) {
+    return _selectedCategory == SearchFilterCategory.all || _selectedCategory == cat;
   }
 
-  bool _includeLocalCategory(String category) {
-    return _selectedCategory == 'All' || _selectedCategory == category;
+  void _onCategoryChanged(SearchFilterCategory cat) {
+    setState(() => _selectedCategory = cat);
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      // Re-run search immediately with new category filter, fixing early-return bug
+      _runSearch(query, forceRefresh: true);
+    }
   }
 
   void _onSearchChanged(String val) {
     final query = val.trim();
     if (query.isEmpty) {
       _onlineSearchService?.cancel();
+      _localSearchService?.cancel();
       setState(() {
         _localResults = const SearchResults();
         _onlineResults = null;
@@ -100,33 +102,33 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    setState(() {});
     _runSearch(query);
   }
 
-  Future<void> _runSearch(String query) async {
-    if (query == _lastQuery && !_isSearchingOnline) return;
+  Future<void> _runSearch(String query, {bool forceRefresh = false}) async {
+    if (!forceRefresh && query == _lastQuery && !_isSearchingOnline) return;
     _lastQuery = query;
+    final currentSeq = ++_searchSequence;
 
-    // 1. Local catalog (debounced inside the service).
+    // 1. Local catalog search
     final localRes = await _localSearchService?.search(query);
-    if (!mounted || query != _lastQuery) return;
+    if (!mounted || currentSeq != _searchSequence) return;
     if (localRes != null && localRes.isSuccess) {
       setState(() => _localResults = localRes.dataOrNull!);
     } else {
       setState(() => _localResults = const SearchResults());
     }
 
-    // 2. Online providers: cancellation handled by the SearchService itself.
+    // 2. Online providers search
     final online = _onlineSearchService;
     if (online == null) return;
 
     if (mounted) setState(() => _isSearchingOnline = true);
     final onlineRes = await online.debouncedSearch(
       query: query,
-      category: _categoryFilter,
+      category: _selectedCategory,
     );
-    if (!mounted || query != _lastQuery) return;
+    if (!mounted || currentSeq != _searchSequence) return;
 
     if (onlineRes.isSuccess) {
       setState(() {
@@ -153,245 +155,141 @@ class _SearchScreenState extends State<SearchScreen> {
         final query = _searchController.text.trim();
         final isSearching = query.isNotEmpty;
 
-        // Online results are filtered by the selected category server-side,
-        // while local results are partitioned here.
-        final localSongs =
-            _includeLocalCategory('Songs') ? _localResults.songs : const <Song>[];
-        final localAlbums =
-            _includeLocalCategory('Albums') ? _localResults.albums : const <Album>[];
-        final localArtists =
-            _includeLocalCategory('Artists') ? _localResults.artists : const <Artist>[];
-        final localPlaylists =
-            _includeLocalCategory('Playlists') ? _localResults.playlists : const <Playlist>[];
+        final localSongs = _includeCategory(SearchFilterCategory.songs)
+            ? _localResults.songs
+            : const <Song>[];
+        final localAlbums = _includeCategory(SearchFilterCategory.albums)
+            ? _localResults.albums
+            : const <Album>[];
+        final localArtists = _includeCategory(SearchFilterCategory.artists)
+            ? _localResults.artists
+            : const <Artist>[];
+        final localPlaylists = _includeCategory(SearchFilterCategory.playlists)
+            ? _localResults.playlists
+            : const <Playlist>[];
 
-        final onlineSongs = _includeLocalCategory('Songs')
+        final onlineSongs = _includeCategory(SearchFilterCategory.songs)
             ? (_onlineResults?.songs ?? const <SearchResultItem>[])
             : const <SearchResultItem>[];
-        final onlineAlbums = _includeLocalCategory('Albums')
+        final onlineAlbums = _includeCategory(SearchFilterCategory.albums)
             ? (_onlineResults?.albums ?? const <SearchResultItem>[])
             : const <SearchResultItem>[];
-        final onlineArtists = _includeLocalCategory('Artists')
+        final onlineArtists = _includeCategory(SearchFilterCategory.artists)
             ? (_onlineResults?.artists ?? const <SearchResultItem>[])
             : const <SearchResultItem>[];
-        final onlinePlaylists = _includeLocalCategory('Playlists')
+        final onlinePlaylists = _includeCategory(SearchFilterCategory.playlists)
             ? (_onlineResults?.playlists ?? const <SearchResultItem>[])
             : const <SearchResultItem>[];
 
-        final hasResults = localSongs.isNotEmpty ||
-            localAlbums.isNotEmpty ||
-            localArtists.isNotEmpty ||
-            localPlaylists.isNotEmpty ||
-            onlineSongs.isNotEmpty ||
-            onlineAlbums.isNotEmpty ||
-            onlineArtists.isNotEmpty ||
-            onlinePlaylists.isNotEmpty;
+        final totalResultsCount = localSongs.length +
+            localAlbums.length +
+            localArtists.length +
+            localPlaylists.length +
+            onlineSongs.length +
+            onlineAlbums.length +
+            onlineArtists.length +
+            onlinePlaylists.length;
 
         return Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              // Atmospheric Japanese Torii Lake Backdrop
-              const JapaneseSceneryBackground(
-                imageAsset: 'assets/images/bg_search.jpg',
-                opacity: 0.5,
-              ),
-
-              SafeArea(
-                bottom: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header with Kanji
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Text('探', style: CaviaTypography.kanjiHeader),
-                          SizedBox(height: 2),
-                          Text(
-                            'S E A R C H',
-                            style: CaviaTypography.sectionLabel,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Search Pill Input Field
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: GlassContainer(
-                        radius: CaviaGlass.radiusPill,
-                        blur: CaviaGlass.blurHeavy,
-                        surfaceColor: CaviaColors.glassSurface,
-                        borderColor: isSearching
-                            ? CaviaColors.vermilionBright.withValues(alpha: 0.7)
-                            : CaviaColors.glassBorder,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.search_rounded,
-                              color: CaviaColors.textSilver,
-                              size: 22,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                style: const TextStyle(
-                                  color: CaviaColors.textIvory,
-                                ),
-                                decoration: const InputDecoration(
-                                  hintText: 'Search music...',
-                                  hintStyle: TextStyle(
-                                    color: CaviaColors.textDim,
-                                  ),
-                                  border: InputBorder.none,
-                                ),
-                                onChanged: _onSearchChanged,
-                              ),
-                            ),
-                            if (isSearching)
-                              IconButton(
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                                color: CaviaColors.textSilver,
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _localResults = const SearchResults();
-                                    _onlineResults = null;
-                                    _isSearchingOnline = false;
-                                    _onlineSearchError = null;
-                                    _lastQuery = '';
-                                  });
-                                },
-                              ),
-                            const Icon(
-                              Icons.tune_rounded,
-                              color: CaviaColors.textSilver,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Category Filter Pills (if searching)
-                    if (isSearching)
-                      SizedBox(
-                        height: 38,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children:
-                              ['All', 'Songs', 'Albums', 'Artists', 'Playlists']
-                                  .map(
-                                    (category) => Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: FilterChip(
-                                        selected: _selectedCategory == category,
-                                        label: Text(category),
-                                        labelStyle: TextStyle(
-                                          color: _selectedCategory == category
-                                              ? CaviaColors.textIvory
-                                              : CaviaColors.textSilver,
-                                          fontWeight:
-                                              _selectedCategory == category
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          fontSize: 12,
-                                        ),
-                                        backgroundColor:
-                                            CaviaColors.glassSurface,
-                                        selectedColor: CaviaColors.vermilion,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                          side: BorderSide(
-                                            color: _selectedCategory == category
-                                                ? CaviaColors.vermilionBright
-                                                : CaviaColors.glassBorderSubtle,
-                                          ),
-                                        ),
-                                        onSelected: (selected) {
-                                          if (!selected) return;
-                                          setState(() {
-                                            _selectedCategory = category;
-                                          });
-                                          final q = _searchController.text.trim();
-                                          if (q.isNotEmpty) _runSearch(q);
-                                        },
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                        ),
-                      ),
-
-                    // Results or Recent Searches
-                    Expanded(
-                      child: isSearching
-                          ? _buildSearchResults(
-                              context,
-                              hasResults: hasResults,
-                              localSongs: localSongs,
-                              localAlbums: localAlbums,
-                              localArtists: localArtists,
-                              localPlaylists: localPlaylists,
-                              onlineSongs: onlineSongs,
-                              onlineAlbums: onlineAlbums,
-                              onlineArtists: onlineArtists,
-                              onlinePlaylists: onlinePlaylists,
-                              playback: playback,
-                              library: library,
-                            )
-                          : _buildRecentSearches(context, library),
-                    ),
-                  ],
+          backgroundColor: CaviaColors.background,
+          body: SafeArea(
+            bottom: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const CaviaPageHeader(
+                  title: 'Search',
+                  kanji: '探',
+                  sectionLabel: 'S E A R C H',
                 ),
-              ),
-            ],
+
+                // Search Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  child: CaviaSearchField(
+                    controller: _searchController,
+                    focusNode: _focusNode,
+                    onChanged: _onSearchChanged,
+                    onClear: () {
+                      _onlineSearchService?.cancel();
+                      setState(() {
+                        _localResults = const SearchResults();
+                        _onlineResults = null;
+                        _isSearchingOnline = false;
+                        _onlineSearchError = null;
+                        _lastQuery = '';
+                      });
+                    },
+                  ),
+                ),
+
+                // Category Filter Bar (Only shown when searching)
+                if (isSearching)
+                  CaviaFilterControl(
+                    selected: _selectedCategory,
+                    onSelected: _onCategoryChanged,
+                  ),
+
+                const SizedBox(height: 8),
+
+                // Content View
+                Expanded(
+                  child: !isSearching
+                      ? _buildInitialState(library)
+                      : _buildSearchResults(
+                          hasResults: totalResultsCount > 0,
+                          localSongs: localSongs,
+                          localAlbums: localAlbums,
+                          localArtists: localArtists,
+                          localPlaylists: localPlaylists,
+                          onlineSongs: onlineSongs,
+                          onlineAlbums: onlineAlbums,
+                          onlineArtists: onlineArtists,
+                          onlinePlaylists: onlinePlaylists,
+                          playback: playback,
+                          library: library,
+                        ),
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildRecentSearches(BuildContext context, LibraryController library) {
+  Widget _buildInitialState(LibraryController library) {
     final history = library.searchHistory;
 
     if (history.isEmpty) {
-      return Center(
-        child: Text(
-          'No recent searches',
-          style: CaviaTypography.artistSubtitle,
-        ),
+      return const CaviaEmptyState(
+        icon: Icons.search_rounded,
+        title: 'Search Cavia Music',
+        subtitle: 'Find your favorite songs, artists, albums and playlists across your local library and streams.',
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('RECENT SEARCHES', style: CaviaTypography.sectionLabel),
+            const Text('RECENT SEARCHES', style: CaviaTypography.sectionLabel),
             TextButton(
               onPressed: library.clearSearchHistory,
-              child: Text(
+              child: const Text(
                 'Clear all',
-                style: CaviaTypography.caption.copyWith(
+                style: TextStyle(
                   color: CaviaColors.vermilionBright,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         ...history.map(
           (query) => ListTile(
             contentPadding: EdgeInsets.zero,
@@ -402,9 +300,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             title: Text(
               query,
-              style: CaviaTypography.songTitle.copyWith(
-                fontWeight: FontWeight.w400,
-              ),
+              style: CaviaTypography.titleSmall.copyWith(fontWeight: FontWeight.w400),
             ),
             trailing: IconButton(
               icon: const Icon(
@@ -413,10 +309,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 size: 18,
               ),
               onPressed: () => library.removeSearchHistory(query),
+              tooltip: 'Remove',
             ),
             onTap: () {
               _searchController.text = query;
-              setState(() {});
               _runSearch(query);
             },
           ),
@@ -425,41 +321,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _onlineArtwork(SearchResultItem item, {bool circular = false}) {
-    final url = item.artworkUrl;
-    if (url == null || url.isEmpty) {
-      return const SizedBox(
-        width: 48,
-        height: 48,
-        child: Icon(
-          Icons.music_note_rounded,
-          size: 28,
-          color: CaviaColors.textSilver,
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(circular ? 24 : 8),
-      child: Image.network(
-        url,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const SizedBox(
-          width: 48,
-          height: 48,
-          child: Icon(
-            Icons.music_note_rounded,
-            size: 26,
-            color: CaviaColors.textSilver,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchResults(
-    BuildContext context, {
+  Widget _buildSearchResults({
     required bool hasResults,
     required List<Song> localSongs,
     required List<Album> localAlbums,
@@ -474,76 +336,54 @@ class _SearchScreenState extends State<SearchScreen> {
   }) {
     if (!hasResults) {
       if (_isSearchingOnline) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                color: CaviaColors.vermilionBright,
-                strokeWidth: 2,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Searching local catalog & streams...',
-                style: CaviaTypography.caption,
-              ),
-            ],
-          ),
+        return const CaviaLoadingState(
+          message: 'Searching local catalog and streams...',
         );
       }
 
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.search_off_rounded,
-              size: 48,
-              color: CaviaColors.textDim,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No results found',
-              style: CaviaTypography.display.copyWith(fontSize: 18),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _onlineSearchError ?? 'Try a different song, artist or album name',
-              style: CaviaTypography.caption,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+      return CaviaEmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'No Results Found',
+        subtitle: _onlineSearchError ?? 'Try searching with a different track title, artist name, or album.',
       );
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 140),
       children: [
-        if (localSongs.isNotEmpty) ...[
-          _sectionHeader(' Songs'),
-          ...localSongs.map(
-            (song) => _buildSongTile(context, song, playback, null),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        if (onlineSongs.isNotEmpty) ...[
-          _sectionHeader('Titles from Streams', isOnline: true),
+        // Songs Section (Local + Online Deduplicated)
+        if (localSongs.isNotEmpty || onlineSongs.isNotEmpty) ...[
+          const CaviaSectionHeader(title: 'Songs'),
+          ...localSongs.map((song) {
+            final isCurrent = playback.currentSong?.id == song.id;
+            return CaviaTrackRow(
+              track: song,
+              isCurrent: isCurrent,
+              isPlaying: isCurrent && playback.isPlaying,
+              onTap: () => playback.playNow(song),
+            );
+          }),
           ...onlineSongs.map((item) {
             final song = item.trackData;
             if (song == null) return const SizedBox.shrink();
-            return _buildSongTile(context, song, playback, item);
+            final isCurrent = playback.currentSong?.id == song.id;
+            return CaviaTrackRow(
+              track: song,
+              isCurrent: isCurrent,
+              isPlaying: isCurrent && playback.isPlaying,
+              onTap: () => playback.playNow(song),
+            );
           }),
           const SizedBox(height: 16),
         ],
 
-        if (localAlbums.isNotEmpty) ...[
-          _sectionHeader(' Albums in Library'),
+        // Albums Section
+        if (localAlbums.isNotEmpty || onlineAlbums.isNotEmpty) ...[
+          const CaviaSectionHeader(title: 'Albums'),
           ...localAlbums.map(
             (album) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: ArtworkView(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: CaviaArtwork(
                 imageAsset: album.artworkAsset,
                 width: 48,
                 height: 48,
@@ -551,13 +391,13 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
               title: Text(
                 album.title,
-                style: CaviaTypography.songTitle,
+                style: CaviaTypography.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
                 '${album.artist}${album.year > 0 ? ' • ${album.year}' : ''}',
-                style: CaviaTypography.artistSubtitle,
+                style: CaviaTypography.bodySmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -571,56 +411,112 @@ class _SearchScreenState extends State<SearchScreen> {
               },
             ),
           ),
-          const SizedBox(height: 16),
-        ],
-
-        if (onlineAlbums.isNotEmpty) ...[
-          _sectionHeader('Streamed Albums', isOnline: true),
           ...onlineAlbums.map(
             (item) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: _onlineArtwork(item),
-              trailing: const Icon(
-                Icons.circle,
-                size: 6,
-                color: CaviaColors.textSilver,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: CaviaArtwork(
+                imageAsset: item.artworkUrl ?? '',
+                width: 48,
+                height: 48,
+                radius: 8,
               ),
               title: Text(
                 item.title,
-                style: CaviaTypography.songTitle,
+                style: CaviaTypography.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
                 item.subtitle,
-                style: CaviaTypography.artistSubtitle,
+                style: CaviaTypography.bodySmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {},
+              trailing: const Icon(Icons.chevron_right_rounded, color: CaviaColors.textSilver, size: 20),
+              onTap: () {
+                final album = Album(
+                  id: item.id,
+                  title: item.title,
+                  artist: item.subtitle,
+                  year: DateTime.now().year,
+                  artworkAsset: item.artworkUrl,
+                  sourceAttribution: item.sourceAttribution,
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AlbumDetailScreen(album: album),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
         ],
 
-        if (localArtists.isNotEmpty) ...[
-          _sectionHeader(' Artists in Library'),
+        // Artists Section
+        if (localArtists.isNotEmpty || onlineArtists.isNotEmpty) ...[
+          const CaviaSectionHeader(title: 'Artists'),
           ...localArtists.map(
             (artist) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: ArtworkView(
-                imageAsset: artist.portraitAsset,
-                width: 48,
-                height: 48,
-                radius: 24,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: ClipOval(
+                child: CaviaArtwork(
+                  imageAsset: artist.portraitAsset,
+                  width: 48,
+                  height: 48,
+                  radius: 999,
+                ),
               ),
               title: Text(
                 artist.name,
-                style: CaviaTypography.songTitle,
+                style: CaviaTypography.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              subtitle: Text(
+                '${artist.albums.length} albums',
+                style: CaviaTypography.bodySmall,
+              ),
               onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ArtistDetailScreen(artist: artist),
+                  ),
+                );
+              },
+            ),
+          ),
+          ...onlineArtists.map(
+            (item) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: ClipOval(
+                child: CaviaArtwork(
+                  imageAsset: item.artworkUrl ?? '',
+                  width: 48,
+                  height: 48,
+                  radius: 999,
+                ),
+              ),
+              title: Text(
+                item.title,
+                style: CaviaTypography.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                item.subtitle.isNotEmpty ? item.subtitle : 'Artist',
+                style: CaviaTypography.bodySmall,
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: CaviaColors.textSilver, size: 20),
+              onTap: () {
+                final artist = Artist(
+                  id: item.id,
+                  name: item.title,
+                  portraitAsset: item.artworkUrl,
+                  sourceAttribution: item.sourceAttribution,
+                );
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -633,36 +529,13 @@ class _SearchScreenState extends State<SearchScreen> {
           const SizedBox(height: 16),
         ],
 
-        if (onlineArtists.isNotEmpty) ...[
-          _sectionHeader('Streamed Artists', isOnline: true),
-          ...onlineArtists.map(
-            (item) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: _onlineArtwork(item, circular: true),
-              title: Text(
-                item.title,
-                style: CaviaTypography.songTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                item.subtitle,
-                style: CaviaTypography.artistSubtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () {},
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        if (localPlaylists.isNotEmpty) ...[
-          _sectionHeader(' Playlists in Library'),
+        // Playlists Section
+        if (localPlaylists.isNotEmpty || onlinePlaylists.isNotEmpty) ...[
+          const CaviaSectionHeader(title: 'Playlists'),
           ...localPlaylists.map(
             (playlist) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: ArtworkView(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: CaviaArtwork(
                 imageAsset: playlist.artworkAsset,
                 width: 48,
                 height: 48,
@@ -670,15 +543,13 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
               title: Text(
                 playlist.name,
-                style: CaviaTypography.songTitle,
+                style: CaviaTypography.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
-                '${playlist.trackCount} ${playlist.trackCount == 1 ? 'track' : 'tracks'}',
-                style: CaviaTypography.artistSubtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                '${playlist.trackCount} tracks',
+                style: CaviaTypography.bodySmall,
               ),
               onTap: () {
                 Navigator.push(
@@ -690,132 +561,46 @@ class _SearchScreenState extends State<SearchScreen> {
               },
             ),
           ),
-          const SizedBox(height: 16),
-        ],
-
-        if (onlinePlaylists.isNotEmpty) ...[
-          _sectionHeader('Streamed Playlists', isOnline: true),
           ...onlinePlaylists.map(
             (item) => ListTile(
-              contentPadding: const EdgeInsets.symmetric(vertical: 2),
-              leading: _onlineArtwork(item),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+              leading: CaviaArtwork(
+                imageAsset: item.artworkUrl ?? '',
+                width: 48,
+                height: 48,
+                radius: 8,
+              ),
               title: Text(
                 item.title,
-                style: CaviaTypography.songTitle,
+                style: CaviaTypography.titleMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
                 item.subtitle,
-                style: CaviaTypography.artistSubtitle,
+                style: CaviaTypography.bodySmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {},
+              trailing: const Icon(Icons.chevron_right_rounded, color: CaviaColors.textSilver, size: 20),
+              onTap: () {
+                final pl = Playlist(
+                  id: item.id,
+                  name: item.title,
+                  description: item.subtitle,
+                  artworkAsset: item.artworkUrl,
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PlaylistDetailScreen(playlistId: pl.id),
+                  ),
+                );
+              },
             ),
           ),
         ],
       ],
     );
-  }
-
-  Widget _sectionHeader(String label, {bool isOnline = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 2),
-      child: Row(
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: CaviaTypography.sectionLabel,
-          ),
-          if (isOnline) ...[
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: CaviaColors.vermilion.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: CaviaColors.vermilionBright,
-                  width: 0.5,
-                ),
-              ),
-              child: const Text(
-                'STREAMING',
-                style: TextStyle(
-                  color: CaviaColors.vermilionBright,
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSongTile(
-    BuildContext context,
-    Song song,
-    PlaybackController playback,
-    SearchResultItem? onlineItem,
-  ) {
-    final knownDuration = song.duration > Duration.zero;
-
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 2),
-      leading: ArtworkView(
-        imageAsset: song.artworkAsset,
-        width: 44,
-        height: 44,
-        radius: 8,
-      ),
-      title: Text(
-        song.title,
-        style: CaviaTypography.songTitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        '${song.artist}${song.album.isEmpty ? '' : ' • ${song.album}'}',
-        style: CaviaTypography.artistSubtitle,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (knownDuration)
-            Text(
-              _formatDuration(song.duration),
-              style: CaviaTypography.caption.copyWith(
-                color: CaviaColors.textDim,
-              ),
-            ),
-          IconButton(
-            icon: const Icon(
-              Icons.more_vert_rounded,
-              size: 18,
-              color: CaviaColors.textSilver,
-            ),
-            onPressed: () => TrackContextMenu.show(context, song),
-          ),
-        ],
-      ),
-      onTap: () {
-        // The Track model already carries a real provider identity
-        // ('local' or 'youtube_music'); playback resolution goes through
-        // TrackResolver with no provider rewriting here.
-        playback.playNow(song);
-      },
-    );
-  }
-
-  String _formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60);
-    final seconds = duration.inSeconds.remainder(60);
-    return '${duration.inHours > 0 ? '${duration.inHours}:' : ''}'
-        '$minutes:${seconds.toString().padLeft(2, '0')}';
   }
 }
