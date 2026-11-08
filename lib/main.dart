@@ -16,6 +16,10 @@ void main() {
     ),
   );
 
+  // Development-only seeding can be opted into via --dart-define=CAVIA_DEV_SEED=true.
+  // Production installs default to false (honest empty library).
+  const bool devSeed = bool.fromEnvironment('CAVIA_DEV_SEED', defaultValue: false);
+
   // Render the shell immediately; bootstrap runs on the first frame.
-  runApp(const CaviaApp());
+  runApp(const CaviaApp(autoSeed: devSeed));
 }

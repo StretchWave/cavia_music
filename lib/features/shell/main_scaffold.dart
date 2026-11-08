@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app/theme/cavia_colors.dart';
 import '../../core/responsive/responsive_breakpoints.dart';
 import '../../core/state/playback_controller.dart';
@@ -39,18 +40,50 @@ class _MainScaffoldState extends State<MainScaffold> {
   Widget build(BuildContext context) {
     final playback = AppStateScope.playbackOf(context);
 
-    return PlayerOverlayWrapper(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isDesktop = constraints.maxWidth >= CaviaBreakpoints.tabletMin;
-
-          return Scaffold(
-            backgroundColor: CaviaColors.background,
-            body: isDesktop
-                ? _buildDesktopLayout(context, playback)
-                : _buildMobileLayout(context, playback),
-          );
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.space): () {
+          final primaryFocus = FocusManager.instance.primaryFocus;
+          if (primaryFocus?.context?.widget is! EditableText) {
+            playback.togglePlayPause();
+          }
         },
+        const SingleActivator(LogicalKeyboardKey.arrowRight, control: true): () {
+          final nextSec = (playback.currentPosition.inSeconds + 5)
+              .clamp(0, playback.totalDuration.inSeconds);
+          playback.seekToSeconds(nextSec);
+        },
+        const SingleActivator(LogicalKeyboardKey.arrowLeft, control: true): () {
+          final prevSec = (playback.currentPosition.inSeconds - 5)
+              .clamp(0, playback.totalDuration.inSeconds);
+          playback.seekToSeconds(prevSec);
+        },
+        const SingleActivator(LogicalKeyboardKey.mediaPlayPause): () {
+          playback.togglePlayPause();
+        },
+        const SingleActivator(LogicalKeyboardKey.mediaTrackNext): () {
+          playback.skipNext();
+        },
+        const SingleActivator(LogicalKeyboardKey.mediaTrackPrevious): () {
+          playback.skipPrevious();
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: PlayerOverlayWrapper(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= CaviaBreakpoints.tabletMin;
+
+              return Scaffold(
+                backgroundColor: CaviaColors.background,
+                body: isDesktop
+                    ? _buildDesktopLayout(context, playback)
+                    : _buildMobileLayout(context, playback),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

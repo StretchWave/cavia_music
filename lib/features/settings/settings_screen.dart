@@ -143,18 +143,15 @@ class SettingsScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Row(
-                                  children: const [
-                                    Icon(
-                                      Icons.sd_storage_rounded,
-                                      color: CaviaColors.textSilver,
-                                      size: 22,
-                                    ),
-                                    SizedBox(width: 12),
-                                    Text('Cache storage limit', style: CaviaTypography.body),
-                                  ],
+                                const Icon(
+                                  Icons.sd_storage_rounded,
+                                  color: CaviaColors.textSilver,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text('Cache storage limit', style: CaviaTypography.body),
                                 ),
                                 Text(
                                   settings.cacheQuotaFormatted,

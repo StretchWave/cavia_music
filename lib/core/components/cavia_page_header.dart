@@ -71,11 +71,13 @@ class CaviaPageHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(
-                title,
-                style: CaviaTypography.displayMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Flexible(
+                child: Text(
+                  title,
+                  style: CaviaTypography.displayMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               if (kanji != null) ...[
                 const SizedBox(width: 10),

@@ -98,7 +98,7 @@ class CaviaApp extends StatefulWidget {
     this.trackResolver,
     this.audioHandler,
     this.deviceId,
-    this.autoSeed = true,
+    this.autoSeed = false,
   });
 
   /// Optional factory for production main entry point.

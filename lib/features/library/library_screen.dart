@@ -6,8 +6,10 @@ import '../../core/components/cavia_page_header.dart';
 import '../../core/components/cavia_section_header.dart';
 import '../../core/components/cavia_album_card.dart';
 import '../../core/components/cavia_playlist_card.dart';
+import '../../core/components/cavia_recent_track_card.dart';
 import '../../core/components/cavia_feedback_states.dart';
 import '../../core/state/app_state_scope.dart';
+import '../albums/album_detail_screen.dart';
 import '../playlists/create_playlist_dialog.dart';
 import '../playlists/playlist_detail_screen.dart';
 import '../spotify_import/spotify_import_screen.dart';
@@ -110,30 +112,28 @@ class LibraryScreen extends StatelessWidget {
                     ),
 
                   // Recently Played (Only rendered when there is actual playback history!)
+                  // Recently Played Carousel
                   if (library.recentlyPlayed.isNotEmpty) ...[
                     SliverToBoxAdapter(
                       child: CaviaSectionHeader(title: 'Recently Played'),
                     ),
                     SliverToBoxAdapter(
                       child: SizedBox(
-                        height: 175,
+                        height: 185,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: library.recentlyPlayed.length,
                           itemBuilder: (context, index) {
                             final song = library.recentlyPlayed[index];
+                            final isPlaying = playback.currentSong?.id == song.id;
 
                             return Container(
                               width: 130,
                               margin: const EdgeInsets.symmetric(horizontal: 6),
-                              child: CaviaAlbumCard(
-                                album: library.albums.firstWhere(
-                                  (a) => a.title == song.album,
-                                  orElse: () => library.albums.isNotEmpty
-                                      ? library.albums.first
-                                      : library.albums.first,
-                                ),
+                              child: CaviaRecentTrackCard(
+                                track: song,
+                                isPlaying: isPlaying,
                                 onTap: () => playback.playNow(song),
                               ),
                             );
@@ -241,7 +241,7 @@ class LibraryScreen extends StatelessWidget {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const AlbumsCollectionScreen(),
+                                      builder: (_) => AlbumDetailScreen(album: album),
                                     ),
                                   );
                                 },

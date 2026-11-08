@@ -76,6 +76,8 @@ class _PlayerOverlayWrapperState extends State<PlayerOverlayWrapper>
   @override
   Widget build(BuildContext context) {
     final playback = AppStateScope.playbackOf(context);
+    final disableMotion = MediaQuery.disableAnimationsOf(context);
+    _controller.duration = disableMotion ? Duration.zero : CaviaMotion.durationExpansion;
 
     return ListenableBuilder(
       listenable: playback,

@@ -22,9 +22,12 @@ class CaviaSectionHeader extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(
-            title.toUpperCase(),
-            style: CaviaTypography.overline,
+          Expanded(
+            child: Text(
+              title.toUpperCase(),
+              style: CaviaTypography.overline,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           ?trailing,
         ],

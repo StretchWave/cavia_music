@@ -111,10 +111,15 @@ class CaviaArtwork extends StatelessWidget {
       return _buildFallback();
     }
 
+    final targetCacheWidth = width != null ? (width! * 2).round() : null;
+    final targetCacheHeight = height != null ? (height! * 2).round() : null;
+
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return Image.network(
         trimmed,
         fit: BoxFit.cover,
+        cacheWidth: targetCacheWidth,
+        cacheHeight: targetCacheHeight,
         errorBuilder: (context, error, stackTrace) => _buildFallback(),
       );
     }
@@ -128,6 +133,8 @@ class CaviaArtwork extends StatelessWidget {
         return Image.file(
           file,
           fit: BoxFit.cover,
+          cacheWidth: targetCacheWidth,
+          cacheHeight: targetCacheHeight,
           errorBuilder: (context, error, stackTrace) => _buildFallback(),
         );
       }
@@ -136,6 +143,8 @@ class CaviaArtwork extends StatelessWidget {
     return Image.asset(
       trimmed,
       fit: BoxFit.cover,
+      cacheWidth: targetCacheWidth,
+      cacheHeight: targetCacheHeight,
       errorBuilder: (context, error, stackTrace) => _buildFallback(),
     );
   }

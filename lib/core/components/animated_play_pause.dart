@@ -19,11 +19,15 @@ class AnimatedPlayPauseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final disableMotion = MediaQuery.disableAnimationsOf(context);
+    final buttonDuration = disableMotion ? Duration.zero : CaviaMotion.durationButton;
+    final iconDuration = disableMotion ? Duration.zero : CaviaMotion.durationIcon;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: CaviaMotion.durationButton,
+        duration: buttonDuration,
         curve: CaviaMotion.curveFluid,
         width: size,
         height: size,
@@ -61,7 +65,7 @@ class AnimatedPlayPauseButton extends StatelessWidget {
         ),
         child: Center(
           child: AnimatedSwitcher(
-            duration: CaviaMotion.durationIcon,
+            duration: iconDuration,
             transitionBuilder: (child, animation) {
               return ScaleTransition(
                 scale: animation,

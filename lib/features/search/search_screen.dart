@@ -40,6 +40,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   SearchResults _localResults = const SearchResults();
   SearchResponse? _onlineResults;
+  bool _isSearchingLocal = false;
   bool _isSearchingOnline = false;
   String? _onlineSearchError;
   String _lastQuery = '';
@@ -79,10 +80,11 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onCategoryChanged(SearchFilterCategory cat) {
+    if (_selectedCategory == cat) return;
     setState(() => _selectedCategory = cat);
     final query = _searchController.text.trim();
     if (query.isNotEmpty) {
-      // Re-run search immediately with new category filter, fixing early-return bug
+      // Re-run search immediately with new category filter, clearing previous results
       _runSearch(query, forceRefresh: true);
     }
   }
@@ -92,9 +94,11 @@ class _SearchScreenState extends State<SearchScreen> {
     if (query.isEmpty) {
       _onlineSearchService?.cancel();
       _localSearchService?.cancel();
+      _searchSequence++;
       setState(() {
         _localResults = const SearchResults();
         _onlineResults = null;
+        _isSearchingLocal = false;
         _isSearchingOnline = false;
         _onlineSearchError = null;
         _lastQuery = '';
@@ -106,42 +110,63 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _runSearch(String query, {bool forceRefresh = false}) async {
-    if (!forceRefresh && query == _lastQuery && !_isSearchingOnline) return;
+    if (!forceRefresh && query == _lastQuery && !_isSearchingOnline && !_isSearchingLocal) return;
     _lastQuery = query;
+
+    // Immediately cancel in-flight operations from previous queries
+    _onlineSearchService?.cancel();
+    _localSearchService?.cancel();
+
     final currentSeq = ++_searchSequence;
+
+    // Immediately clear previous results and reset loading/error state
+    setState(() {
+      _localResults = const SearchResults();
+      _onlineResults = null;
+      _isSearchingLocal = true;
+      _isSearchingOnline = true;
+      _onlineSearchError = null;
+    });
 
     // 1. Local catalog search
     final localRes = await _localSearchService?.search(query);
     if (!mounted || currentSeq != _searchSequence) return;
-    if (localRes != null && localRes.isSuccess) {
-      setState(() => _localResults = localRes.dataOrNull!);
-    } else {
-      setState(() => _localResults = const SearchResults());
-    }
+    setState(() {
+      _isSearchingLocal = false;
+      if (localRes != null && localRes.isSuccess) {
+        _localResults = localRes.dataOrNull!;
+      } else {
+        _localResults = const SearchResults();
+      }
+    });
 
     // 2. Online providers search
     final online = _onlineSearchService;
-    if (online == null) return;
+    if (online == null) {
+      if (mounted && currentSeq == _searchSequence) {
+        setState(() => _isSearchingOnline = false);
+      }
+      return;
+    }
 
-    if (mounted) setState(() => _isSearchingOnline = true);
     final onlineRes = await online.debouncedSearch(
       query: query,
       category: _selectedCategory,
     );
     if (!mounted || currentSeq != _searchSequence) return;
 
-    if (onlineRes.isSuccess) {
-      setState(() {
+    setState(() {
+      _isSearchingOnline = false;
+      if (onlineRes.isSuccess) {
         _onlineResults = onlineRes.dataOrNull!;
-        _isSearchingOnline = false;
         _onlineSearchError = null;
-      });
-    } else {
-      setState(() {
-        _isSearchingOnline = false;
-        _onlineSearchError = onlineRes.errorOrNull?.userMessage;
-      });
-    }
+      } else {
+        final err = onlineRes.errorOrNull;
+        if (err != null && !err.userMessage.contains('Superseded')) {
+          _onlineSearchError = err.userMessage;
+        }
+      }
+    });
   }
 
   @override
@@ -212,9 +237,12 @@ class _SearchScreenState extends State<SearchScreen> {
                     onChanged: _onSearchChanged,
                     onClear: () {
                       _onlineSearchService?.cancel();
+                      _localSearchService?.cancel();
+                      _searchSequence++;
                       setState(() {
                         _localResults = const SearchResults();
                         _onlineResults = null;
+                        _isSearchingLocal = false;
                         _isSearchingOnline = false;
                         _onlineSearchError = null;
                         _lastQuery = '';
@@ -275,8 +303,19 @@ class _SearchScreenState extends State<SearchScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('RECENT SEARCHES', style: CaviaTypography.sectionLabel),
+            const Expanded(
+              child: Text(
+                'RECENT SEARCHES',
+                style: CaviaTypography.sectionLabel,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             TextButton(
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               onPressed: library.clearSearchHistory,
               child: const Text(
                 'Clear all',
@@ -335,9 +374,9 @@ class _SearchScreenState extends State<SearchScreen> {
     required LibraryController library,
   }) {
     if (!hasResults) {
-      if (_isSearchingOnline) {
+      if (_isSearchingOnline || _isSearchingLocal) {
         return const CaviaLoadingState(
-          message: 'Searching local catalog and streams...',
+          message: 'Searching catalog and streams...',
         );
       }
 

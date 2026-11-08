@@ -82,7 +82,7 @@ void main() {
     });
 
     testWidgets('3. Library, Search, Settings, and Player screens access their dependencies cleanly', (tester) async {
-      await tester.pumpWidget(const CaviaApp());
+      await tester.pumpWidget(const CaviaApp(autoSeed: true));
       await tester.pumpAndSettle();
 
       // Library Screen verification

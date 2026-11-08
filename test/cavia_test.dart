@@ -162,8 +162,24 @@ void main() {
   });
 
   group('Widget & Navigation Integration Tests', () {
-    testWidgets('App launches directly into populated Library screen', (tester) async {
+    testWidgets('Production CaviaApp defaults to autoSeed = false and launches with honest empty library', (tester) async {
       await tester.pumpWidget(const CaviaApp());
+      await tester.pumpAndSettle();
+
+      // Verify wordmark and Library headers
+      expect(find.text('藏'), findsOneWidget);
+      expect(find.text('L I B R A R Y'), findsOneWidget);
+
+      // Verify honest empty state is shown (no fake seeded playlists or tracks)
+      expect(find.text('Your Library is Empty'), findsOneWidget);
+      expect(find.text('Import Playlist'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(milliseconds: 50));
+    });
+
+    testWidgets('App launches directly into populated Library screen', (tester) async {
+      await tester.pumpWidget(const CaviaApp(autoSeed: true));
       await tester.pumpAndSettle();
 
       // Verify Cavia wordmark and Kanji
@@ -191,7 +207,7 @@ void main() {
     });
 
     testWidgets('Switch tabs between Library, Search, and Settings', (tester) async {
-      await tester.pumpWidget(const CaviaApp());
+      await tester.pumpWidget(const CaviaApp(autoSeed: true));
       await tester.pumpAndSettle();
 
       // Tap Search tab
@@ -221,7 +237,7 @@ void main() {
     });
 
     testWidgets('Full Player expands on Mini-Player tap and collapses on chevron down', (tester) async {
-      await tester.pumpWidget(const CaviaApp());
+      await tester.pumpWidget(const CaviaApp(autoSeed: true));
       await tester.pumpAndSettle();
 
       // Tap the Mini-Player track title
@@ -245,7 +261,7 @@ void main() {
     });
 
     testWidgets('Search query displays filtered results and allows clearing', (tester) async {
-      await tester.pumpWidget(const CaviaApp());
+      await tester.pumpWidget(const CaviaApp(autoSeed: true));
       await tester.pumpAndSettle();
 
       // Go to Search
